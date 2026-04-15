@@ -114,6 +114,7 @@ export default function App() {
   const [isCreatorMode, setIsCreatorMode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [localLessons, setLocalLessons] = useState<Lesson[]>([]);
+  const [lessonsWithQuizzes, setLessonsWithQuizzes] = useState<Set<string>>(new Set());
 
   const homeRef = useRef<HTMLElement>(null);
   const lessonsRef = useRef<HTMLElement>(null);
@@ -126,20 +127,21 @@ export default function App() {
     }
 
     // Sync with Supabase
-    const fetchLessons = async () => {
-      const { data, error } = await supabase
-        .from('lessons')
-        .select('*')
-        .order('id', { ascending: false });
+    const fetchLessonsAndQuizzes = async () => {
+      const [lessonsRes, quizzesRes] = await Promise.all([
+        supabase.from('lessons').select('*').order('id', { ascending: false }),
+        supabase.from('quizzes').select('lesson_id')
+      ]);
 
-      if (data) {
-        setLocalLessons(data);
-      } else if (error) {
-        console.error('Error fetching lessons:', error);
+      if (lessonsRes.data) {
+        setLocalLessons(lessonsRes.data);
+      }
+      if (quizzesRes.data) {
+        setLessonsWithQuizzes(new Set(quizzesRes.data.map(q => q.lesson_id)));
       }
     };
 
-    fetchLessons();
+    fetchLessonsAndQuizzes();
 
     const handleScroll = () => {
       if (isCreatorMode) return;
@@ -161,19 +163,14 @@ export default function App() {
   }, [isCreatorMode]);
 
   const saveLessons = async (updated: Lesson[]) => {
-    // For simplicity, we'll sync the change to Supabase
-    // Ideally we would do granular updates, but we'll stick to a basic sync for now
     setLocalLessons(updated);
+    const { error } = await supabase.from('lessons').upsert(updated);
+    if (error) console.error('Error saving lessons:', error);
+  };
 
-    // We'll perform an upsert for all lessons in the list
-    // This is not most efficient but works for now to match current state logic
-    const { error } = await supabase
-      .from('lessons')
-      .upsert(updated);
-
-    if (error) {
-      console.error('Error saving lessons to Supabase:', error);
-    }
+  const syncQuizStatus = async () => {
+    const { data } = await supabase.from('quizzes').select('lesson_id');
+    if (data) setLessonsWithQuizzes(new Set(data.map(q => q.lesson_id)));
   };
 
   const deleteLesson = async (id: string) => {
@@ -235,6 +232,8 @@ export default function App() {
         lessons={localLessons}
         onSave={saveLessons}
         onDelete={deleteLesson}
+        hasQuizIds={lessonsWithQuizzes}
+        onQuizSaved={syncQuizStatus}
         onLogout={() => {
           setIsLoggedIn(false);
           setIsCreatorMode(false);
@@ -249,6 +248,7 @@ export default function App() {
       <PlatformLessonsView
         platform={selectedPlatform}
         lessons={getMergedLessons(selectedPlatform)}
+        hasQuizIds={lessonsWithQuizzes}
         onBack={() => scrollTo('lessons')}
         onNav={(section) => scrollTo(section)}
         activeSection={activeSection}
@@ -536,7 +536,7 @@ export default function App() {
   );
 }
 
-function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }: { platform: Platform, lessons: Lesson[], onBack: () => void, onNav: (s: Section) => void, activeSection: Section }) {
+function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack, onNav, activeSection }: { platform: Platform, lessons: Lesson[], hasQuizIds: Set<string>, onBack: () => void, onNav: (s: Section) => void, activeSection: Section }) {
   const [activeVideo, setActiveVideo] = useState<Lesson | null>(null);
   const [quizLesson, setQuizLesson] = useState<Lesson | null>(null);
 
@@ -771,6 +771,15 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
                       <PlayCircle size={32} className="absolute text-secondary" />
                     </div>
                   </div>
+
+                  {/* Quiz Badge */}
+                  <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 z-20 ${hasQuizIds.has(lesson.id)
+                      ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20'
+                      : 'bg-black/40 backdrop-blur-md text-white/70'
+                    }`}>
+                    <Zap size={10} fill={hasQuizIds.has(lesson.id) ? "currentColor" : "none"} />
+                    {hasQuizIds.has(lesson.id) ? 'Quiz Ready' : 'App Only'}
+                  </div>
                   {lesson.duration && (
                     <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold">
                       {lesson.duration}
@@ -1003,7 +1012,7 @@ function getThumbnailFromUrl(url: string): string | null {
   return null;
 }
 
-function CreatorDashboard({ lessons, onSave, onDelete, onLogout }: { lessons: Lesson[], onSave: (l: Lesson[]) => void, onDelete: (id: string) => void, onLogout: () => void }) {
+function CreatorDashboard({ lessons, onSave, onDelete, hasQuizIds, onQuizSaved, onLogout }: { lessons: Lesson[], onSave: (l: Lesson[]) => void, onDelete: (id: string) => void, hasQuizIds: Set<string>, onQuizSaved: () => void, onLogout: () => void }) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [quizLessonId, setQuizLessonId] = useState<{ id: string; title: string } | null>(null);
@@ -1139,6 +1148,15 @@ function CreatorDashboard({ lessons, onSave, onDelete, onLogout }: { lessons: Le
                   />
                   <div className="absolute top-4 left-4 bg-secondary text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
                     {lesson.platform}
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 ${hasQuizIds.has(lesson.id)
+                    ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20'
+                    : 'bg-black/40 backdrop-blur-md text-white/50'
+                    }`}>
+                    <Zap size={10} fill={hasQuizIds.has(lesson.id) ? "currentColor" : "none"} />
+                    {hasQuizIds.has(lesson.id) ? 'Active' : 'Missing Quiz'}
                   </div>
                 </div>
                 <div className="p-6">
@@ -1324,7 +1342,7 @@ function CreatorDashboard({ lessons, onSave, onDelete, onLogout }: { lessons: Le
           <QuizBuilder
             lessonId={quizLessonId.id}
             lessonTitle={quizLessonId.title}
-            onClose={() => setQuizLessonId(null)}
+            onClose={() => { setQuizLessonId(null); onQuizSaved(); }}
           />
         )}
       </AnimatePresence>
