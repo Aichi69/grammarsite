@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef, ReactNode } from 'react';
+import { supabase } from './supabaseClient';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Home, 
-  BookOpen, 
-  Info, 
-  PlayCircle, 
-  Zap, 
-  Instagram, 
-  Users, 
-  ChevronRight, 
+import {
+  Home,
+  BookOpen,
+  Info,
+  PlayCircle,
+  Zap,
+  Instagram,
+  Users,
+  ChevronRight,
   ChevronLeft,
-  Star, 
+  Star,
   MonitorPlay,
   Lightbulb,
   GraduationCap,
@@ -113,20 +114,26 @@ export default function App() {
       setIsCreatorMode(true);
     }
 
-    // Load local lessons
-    const saved = localStorage.getItem('grammarsite_lessons');
-    if (saved) {
-      try {
-        setLocalLessons(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load local lessons', e);
+    // Sync with Supabase
+    const fetchLessons = async () => {
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (data) {
+        setLocalLessons(data);
+      } else if (error) {
+        console.error('Error fetching lessons:', error);
       }
-    }
+    };
+
+    fetchLessons();
 
     const handleScroll = () => {
       if (isCreatorMode) return;
       setIsScrolled(window.scrollY > 20);
-      
+
       const scrollPosition = window.scrollY + 100;
 
       if (aboutRef.current && scrollPosition >= aboutRef.current.offsetTop) {
@@ -142,9 +149,20 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isCreatorMode]);
 
-  const saveLessons = (updated: Lesson[]) => {
+  const saveLessons = async (updated: Lesson[]) => {
+    // For simplicity, we'll sync the change to Supabase
+    // Ideally we would do granular updates, but we'll stick to a basic sync for now
     setLocalLessons(updated);
-    localStorage.setItem('grammarsite_lessons', JSON.stringify(updated));
+
+    // We'll perform an upsert for all lessons in the list
+    // This is not most efficient but works for now to match current state logic
+    const { error } = await supabase
+      .from('lessons')
+      .upsert(updated);
+
+    if (error) {
+      console.error('Error saving lessons to Supabase:', error);
+    }
   };
 
   const getMergedLessons = (platform: Platform) => {
@@ -188,24 +206,24 @@ export default function App() {
       return <CreatorLogin onLogin={() => setIsLoggedIn(true)} />;
     }
     return (
-      <CreatorDashboard 
-        lessons={localLessons} 
-        onSave={saveLessons} 
+      <CreatorDashboard
+        lessons={localLessons}
+        onSave={saveLessons}
         onLogout={() => {
           setIsLoggedIn(false);
           setIsCreatorMode(false);
           window.history.pushState({}, '', '/');
-        }} 
+        }}
       />
     );
   }
 
   if (selectedPlatform) {
     return (
-      <PlatformLessonsView 
-        platform={selectedPlatform} 
+      <PlatformLessonsView
+        platform={selectedPlatform}
         lessons={getMergedLessons(selectedPlatform)}
-        onBack={() => scrollTo('lessons')} 
+        onBack={() => scrollTo('lessons')}
         onNav={(section) => scrollTo(section)}
         activeSection={activeSection}
       />
@@ -223,20 +241,20 @@ export default function App() {
           </div>
 
           <nav className="flex items-center gap-2 md:gap-4">
-            <NavButton 
-              active={activeSection === 'home'} 
+            <NavButton
+              active={activeSection === 'home'}
               onClick={() => scrollTo('home')}
               icon={<Home size={20} />}
               label="Home"
             />
-            <NavButton 
-              active={activeSection === 'lessons'} 
+            <NavButton
+              active={activeSection === 'lessons'}
               onClick={() => scrollTo('lessons')}
               icon={<BookOpen size={20} />}
               label="Lessons"
             />
-            <NavButton 
-              active={activeSection === 'about'} 
+            <NavButton
+              active={activeSection === 'about'}
               onClick={() => scrollTo('about')}
               icon={<Info size={20} />}
               label="About Us"
@@ -253,7 +271,7 @@ export default function App() {
         {/* Hero Section */}
         <section ref={homeRef} className="max-w-7xl mx-auto px-6 py-12 md:py-20 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -277,16 +295,16 @@ export default function App() {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               className="lg:col-span-5 relative"
             >
               <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl relative z-10">
-                <img 
-                  className="w-full h-full object-cover" 
-                  src="https://picsum.photos/seed/learning/800/800" 
+                <img
+                  className="w-full h-full object-cover"
+                  src="https://picsum.photos/seed/learning/800/800"
                   alt="Learning environment"
                   referrerPolicy="no-referrer"
                 />
@@ -314,7 +332,7 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <PlatformCard 
+            <PlatformCard
               icon={<PlayCircle className="text-[#FF0000]" size={24} />}
               iconBg="bg-red-50"
               title="YouTube"
@@ -322,7 +340,7 @@ export default function App() {
               lessons="248 Lessons"
               onClick={() => setSelectedPlatform('YouTube')}
             />
-            <PlatformCard 
+            <PlatformCard
               icon={<Zap className="text-on-surface" size={24} />}
               iconBg="bg-surface-container-low"
               title="TikTok"
@@ -330,7 +348,7 @@ export default function App() {
               lessons="512 Lessons"
               onClick={() => setSelectedPlatform('TikTok')}
             />
-            <PlatformCard 
+            <PlatformCard
               icon={<Instagram className="text-white" size={24} />}
               iconBg="bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]"
               title="Instagram"
@@ -338,7 +356,7 @@ export default function App() {
               lessons="389 Lessons"
               onClick={() => setSelectedPlatform('Instagram')}
             />
-            <PlatformCard 
+            <PlatformCard
               icon={<Users className="text-secondary" size={24} />}
               iconBg="bg-blue-50"
               title="Facebook"
@@ -357,7 +375,7 @@ export default function App() {
                 <span className="text-7xl font-black text-on-surface mb-2">12</span>
                 <span className="text-on-surface-variant font-semibold text-lg text-center">Lessons Watched Today</span>
               </div>
-              
+
               <div className="flex flex-col items-center">
                 <span className="text-7xl font-black text-on-surface mb-2">4.9</span>
                 <div className="flex text-tertiary-container mb-3">
@@ -379,17 +397,17 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-24">
-            <MissionCard 
+            <MissionCard
               icon={<Lightbulb className="text-secondary" size={24} />}
               title="Clarity"
               description="Removing the noise of traditional LMS to provide crystal-clear pathways through complex grammar rules."
             />
-            <MissionCard 
+            <MissionCard
               icon={<GraduationCap className="text-secondary" size={24} />}
               title="Learning"
               description="An adaptive ecosystem that evolves with your unique pace, turning friction into flow."
             />
-            <MissionCard 
+            <MissionCard
               icon={<TrendingUp className="text-secondary" size={24} />}
               title="Progress"
               description="Visualizing growth through tactile, friendly indicators that celebrate every win."
@@ -403,9 +421,9 @@ export default function App() {
                 </p>
               </div>
               <div className="relative z-10 w-full md:w-1/3 aspect-video rounded-2xl overflow-hidden shadow-2xl">
-                <img 
-                  src="https://picsum.photos/seed/empower/600/400" 
-                  alt="Empowerment" 
+                <img
+                  src="https://picsum.photos/seed/empower/600/400"
+                  alt="Empowerment"
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   referrerPolicy="no-referrer"
                 />
@@ -418,19 +436,19 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <TeamCard 
+            <TeamCard
               image="https://picsum.photos/seed/elena/600/800"
               name="Dr. Elena Vance"
               role="FOUNDER & CHIEF LINGUIST"
               bio="A PhD in Cognitive Linguistics with 15 years of experience bridging the gap between brain science and language acquisition."
             />
-            <TeamCard 
+            <TeamCard
               image="https://picsum.photos/seed/marcus/600/800"
               name="Marcus Chen"
               role="CREATIVE DIRECTOR"
               bio="The architect behind 'The Fluid Classroom.' Marcus ensures every pixel serves the learner's journey and mental momentum."
             />
-            <TeamCard 
+            <TeamCard
               image="https://picsum.photos/seed/sarah/600/800"
               name="Sarah Jamil"
               role="HEAD OF EXPERIENCE"
@@ -453,7 +471,7 @@ export default function App() {
                 A new way of learning English through the platforms you already use every day. Simple, modern, and fluid. We believe education should meet you where you are.
               </p>
             </div>
-            
+
             <div className="md:col-span-2 md:col-start-7">
               <h5 className="font-bold text-on-surface mb-6 text-lg">Quick Links</h5>
               <ul className="space-y-4 text-on-surface-variant">
@@ -462,7 +480,7 @@ export default function App() {
                 <li><a href="#" className="hover:text-secondary transition-colors">Premium Perks</a></li>
               </ul>
             </div>
-            
+
             <div className="md:col-span-2">
               <h5 className="font-bold text-on-surface mb-6 text-lg">Support</h5>
               <ul className="space-y-4 text-on-surface-variant">
@@ -482,7 +500,7 @@ export default function App() {
               </div>
             </div>
           </div>
-          
+
           <div className="pt-8 border-t border-on-surface/5 text-center text-on-surface-variant text-sm">
             <p>© {new Date().getFullYear()} The Fluid Classroom. All rights reserved.</p>
           </div>
@@ -497,7 +515,7 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
 
   const getEmbedUrl = (url?: string) => {
     if (!url) return null;
-    
+
     // YouTube (including Shorts)
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       // Handle Shorts
@@ -505,12 +523,12 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
         const videoId = url.split('/shorts/')[1]?.split(/[?#]/)[0];
         return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
       }
-      
+
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
       const match = url.match(regExp);
       return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : url;
     }
-    
+
     // Facebook
     if (url.includes('facebook.com')) {
       return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&width=560`;
@@ -522,10 +540,10 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
       const cleanUrl = url.split(/[?#]/)[0];
       return `${cleanUrl.endsWith('/') ? cleanUrl : cleanUrl + '/'}embed`;
     }
-    
+
     // TikTok (Simple embed attempt)
     if (url.includes('tiktok.com')) {
-      return url; 
+      return url;
     }
 
     return url;
@@ -537,14 +555,14 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
       <AnimatePresence>
         {activeVideo && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setActiveVideo(null)}
               className="absolute inset-0 bg-black/90 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -555,17 +573,17 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
                   <h3 className="text-xl font-bold text-on-surface">{activeVideo.title}</h3>
                   <p className="text-xs text-on-surface-variant font-medium uppercase tracking-widest mt-1">{activeVideo.platform} • {activeVideo.category || 'Lesson'}</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setActiveVideo(null)}
                   className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-on-surface-variant"
                 >
                   <X size={24} />
                 </button>
               </div>
-              
+
               <div className="aspect-video bg-black relative">
                 {activeVideo.videoUrl ? (
-                  <iframe 
+                  <iframe
                     src={getEmbedUrl(activeVideo.videoUrl) || ''}
                     className="w-full h-full border-none"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -590,7 +608,7 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
                     <Zap size={20} />
                     Take Lesson Quiz
                   </button>
-                  <button 
+                  <button
                     onClick={() => setActiveVideo(null)}
                     className="px-8 bg-white text-on-surface-variant py-4 rounded-2xl font-bold hover:bg-on-surface/5 transition-all border border-on-surface/5"
                   >
@@ -610,20 +628,20 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
           </div>
 
           <nav className="flex items-center gap-2 md:gap-4">
-            <NavButton 
-              active={false} 
+            <NavButton
+              active={false}
               onClick={() => onNav('home')}
               icon={<Home size={20} />}
               label="Home"
             />
-            <NavButton 
-              active={true} 
+            <NavButton
+              active={true}
               onClick={() => onNav('lessons')}
               icon={<BookOpen size={20} />}
               label="Lessons"
             />
-            <NavButton 
-              active={false} 
+            <NavButton
+              active={false}
               onClick={() => onNav('about')}
               icon={<Info size={20} />}
               label="About Us"
@@ -653,14 +671,14 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
             <p className="text-on-surface-variant text-lg max-w-2xl mx-auto leading-relaxed mb-10">
               Master English nuances through our fluid cinematic curriculum. Break the grid of traditional learning.
             </p>
-            
+
             {/* Centered Search Bar */}
             <div className="max-w-md mx-auto relative group">
               <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-on-surface-variant group-focus-within:text-secondary transition-colors">
                 <Search size={20} />
               </div>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder={`Search ${platform} lessons...`}
                 className="w-full bg-surface-container-low border-none rounded-2xl py-4 pl-14 pr-6 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-secondary/20 transition-all shadow-sm"
               />
@@ -673,20 +691,20 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
 
           <div className="space-y-12 mb-16">
             {lessons.map((lesson, idx) => (
-              <motion.div 
+              <motion.div
                 key={lesson.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
                 className="bg-white rounded-[2rem] overflow-hidden shadow-2xl shadow-on-surface/5 border border-on-surface/5 group"
               >
-                <div 
+                <div
                   className="relative aspect-video overflow-hidden cursor-pointer"
                   onClick={() => setActiveVideo(lesson)}
                 >
-                  <img 
-                    src={lesson.thumbnail} 
-                    alt={lesson.title} 
+                  <img
+                    src={lesson.thumbnail}
+                    alt={lesson.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     referrerPolicy="no-referrer"
                   />
@@ -722,7 +740,7 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
           </div>
 
           <div className="flex justify-center">
-            <button 
+            <button
               onClick={onBack}
               className="flex items-center gap-2 text-on-surface-variant hover:text-secondary font-bold transition-all group"
             >
@@ -765,20 +783,19 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
 
 function NavButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: ReactNode, label: string }) {
   return (
-    <button 
+    <button
       onClick={onClick}
-      className={`relative flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 group ${
-        active 
-          ? 'bg-secondary-container text-on-secondary-container font-bold shadow-sm' 
-          : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
-      }`}
+      className={`relative flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 group ${active
+        ? 'bg-secondary-container text-on-secondary-container font-bold shadow-sm'
+        : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+        }`}
     >
       <span className={`${active ? 'text-on-secondary-container' : 'text-on-surface-variant group-hover:text-secondary'} transition-colors`}>
         {icon}
       </span>
       <AnimatePresence mode="wait">
         {active && (
-          <motion.span 
+          <motion.span
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 'auto', opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
@@ -794,7 +811,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
 
 function PlatformCard({ icon, iconBg, title, description, lessons, onClick }: { icon: ReactNode, iconBg: string, title: string, description: string, lessons: string, onClick?: () => void }) {
   return (
-    <motion.div 
+    <motion.div
       whileHover={{ y: -5 }}
       onClick={onClick}
       className="bg-white rounded-3xl p-8 shadow-xl shadow-on-surface/5 border border-on-surface/5 flex flex-col h-full group cursor-pointer"
@@ -860,7 +877,7 @@ function CreatorLogin({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-container-low p-6">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-on-surface/5"
@@ -876,8 +893,8 @@ function CreatorLogin({ onLogin }: { onLogin: () => void }) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-bold text-on-surface mb-2 ml-1">Username</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
@@ -886,8 +903,8 @@ function CreatorLogin({ onLogin }: { onLogin: () => void }) {
           </div>
           <div>
             <label className="block text-sm font-bold text-on-surface mb-2 ml-1">Password</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
@@ -895,7 +912,7 @@ function CreatorLogin({ onLogin }: { onLogin: () => void }) {
             />
           </div>
           {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
-          <button 
+          <button
             type="submit"
             className="w-full bg-secondary text-white py-4 rounded-2xl font-bold hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20"
           >
@@ -965,14 +982,14 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
           <h1 className="text-xl font-extrabold text-on-surface tracking-tight">Creator Dashboard</h1>
         </div>
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => setIsAdding(true)}
             className="bg-secondary text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20"
           >
             <Plus size={18} />
             Add Content
           </button>
-          <button 
+          <button
             onClick={onLogout}
             className="text-on-surface-variant hover:text-red-500 transition-colors p-2"
             title="Logout"
@@ -991,7 +1008,7 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
             {lessons.map((lesson) => (
-              <motion.div 
+              <motion.div
                 key={lesson.id}
                 layout
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -1011,13 +1028,13 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
                   <div className="flex justify-between items-center pt-4 border-t border-on-surface/5">
                     <span className="text-xs font-bold text-secondary uppercase tracking-widest">{lesson.category}</span>
                     <div className="flex gap-2">
-                      <button 
+                      <button
                         onClick={() => startEdit(lesson)}
                         className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-secondary hover:text-white transition-all"
                       >
                         <Edit size={16} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDelete(lesson.id)}
                         className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-red-500 hover:text-white transition-all"
                       >
@@ -1043,14 +1060,14 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
       <AnimatePresence>
         {isAdding && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={resetForm}
               className="absolute inset-0 bg-on-surface/20 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 50, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.9 }}
@@ -1067,20 +1084,20 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
                 <div className="grid grid-cols-2 gap-6">
                   <div className="col-span-2">
                     <label className="block text-sm font-bold text-on-surface mb-2">Lesson Title</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
                       placeholder="e.g. Mastering the Present Perfect"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-bold text-on-surface mb-2">Platform</label>
-                    <select 
+                    <select
                       value={formData.platform}
-                      onChange={(e) => setFormData({...formData, platform: e.target.value as Platform})}
+                      onChange={(e) => setFormData({ ...formData, platform: e.target.value as Platform })}
                       className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all appearance-none"
                     >
                       <option value="YouTube">YouTube</option>
@@ -1092,10 +1109,10 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
 
                   <div>
                     <label className="block text-sm font-bold text-on-surface mb-2">Category</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.category}
-                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                       className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
                       placeholder="e.g. Grammar, Vocabulary"
                     />
@@ -1103,9 +1120,9 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
 
                   <div className="col-span-2">
                     <label className="block text-sm font-bold text-on-surface mb-2">Description</label>
-                    <textarea 
+                    <textarea
                       value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all h-32 resize-none"
                       placeholder="Describe the lesson content..."
                     />
@@ -1116,10 +1133,10 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
                     <div className="flex gap-3">
                       <div className="flex-grow relative">
                         <LinkIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-on-surface-variant" size={18} />
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={formData.videoUrl}
-                          onChange={(e) => setFormData({...formData, videoUrl: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
                           className="w-full bg-surface-container-low border-none rounded-2xl py-4 pl-14 pr-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
                           placeholder="https://youtube.com/..."
                         />
@@ -1135,13 +1152,13 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
               </div>
 
               <div className="p-8 border-t border-on-surface/5 flex gap-4">
-                <button 
+                <button
                   onClick={resetForm}
                   className="flex-1 bg-surface-container-low text-on-surface-variant py-4 rounded-2xl font-bold hover:bg-on-surface/5 transition-all"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={handleAdd}
                   className="flex-1 bg-secondary text-white py-4 rounded-2xl font-bold hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20 flex items-center justify-center gap-2"
                 >
