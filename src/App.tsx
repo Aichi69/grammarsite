@@ -553,72 +553,85 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
     <div className="min-h-screen flex flex-col bg-background">
       {/* Video Modal */}
       <AnimatePresence>
-        {activeVideo && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setActiveVideo(null)}
-              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-5xl rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col"
-            >
-              <div className="p-6 border-b border-on-surface/5 flex justify-between items-center bg-white">
-                <div>
-                  <h3 className="text-xl font-bold text-on-surface">{activeVideo.title}</h3>
-                  <p className="text-xs text-on-surface-variant font-medium uppercase tracking-widest mt-1">{activeVideo.platform} • {activeVideo.category || 'Lesson'}</p>
-                </div>
-                <button
-                  onClick={() => setActiveVideo(null)}
-                  className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-on-surface-variant"
-                >
-                  <X size={24} />
-                </button>
-              </div>
+        {activeVideo && (() => {
+          const isVertical = activeVideo.platform === 'TikTok' ||
+            activeVideo.platform === 'Instagram' ||
+            activeVideo.videoUrl?.includes('/shorts/');
 
-              <div className="aspect-video bg-black relative">
-                {activeVideo.videoUrl ? (
-                  <iframe
-                    src={getEmbedUrl(activeVideo.videoUrl) || ''}
-                    className="w-full h-full border-none"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={activeVideo.title}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 p-10 text-center">
-                    <MonitorPlay size={64} className="mb-4 opacity-20" />
-                    <p className="text-xl font-bold">No Video URL Provided</p>
-                    <p className="text-sm opacity-60 mt-2">The creator hasn't attached a playable link to this lesson yet.</p>
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setActiveVideo(null)}
+                className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className={`bg-white w-full ${isVertical ? 'max-w-4xl h-[85vh]' : 'max-w-5xl'} rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col`}
+              >
+                <div className="p-6 border-b border-on-surface/5 flex justify-between items-center bg-white shrink-0">
+                  <div>
+                    <h3 className="text-xl font-bold text-on-surface">{activeVideo.title}</h3>
+                    <p className="text-xs text-on-surface-variant font-medium uppercase tracking-widest mt-1">{activeVideo.platform} • {activeVideo.category || 'Lesson'}</p>
                   </div>
-                )}
-              </div>
-
-              <div className="p-8 bg-surface-container-low">
-                <p className="text-on-surface-variant leading-relaxed">
-                  {activeVideo.description}
-                </p>
-                <div className="mt-8 flex gap-4">
-                  <button className="flex-1 bg-secondary text-white py-4 rounded-2xl font-bold hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20 flex items-center justify-center gap-2">
-                    <Zap size={20} />
-                    Take Lesson Quiz
-                  </button>
                   <button
                     onClick={() => setActiveVideo(null)}
-                    className="px-8 bg-white text-on-surface-variant py-4 rounded-2xl font-bold hover:bg-on-surface/5 transition-all border border-on-surface/5"
+                    className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-on-surface-variant"
                   >
-                    Close
+                    <X size={24} />
                   </button>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
+
+                <div className={`flex-grow flex flex-col md:flex-row overflow-hidden ${isVertical ? '' : 'flex-col'}`}>
+                  {/* Video Section */}
+                  <div className={`${isVertical ? 'md:w-[45%] h-[60%] md:h-full' : 'aspect-video w-full'} bg-black relative shrink-0`}>
+                    {activeVideo.videoUrl ? (
+                      <iframe
+                        src={getEmbedUrl(activeVideo.videoUrl) || ''}
+                        className="w-full h-full border-none"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={activeVideo.title}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 p-10 text-center">
+                        <MonitorPlay size={64} className="mb-4 opacity-20" />
+                        <p className="text-xl font-bold">No Video URL Provided</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Details Section */}
+                  <div className="p-8 bg-surface-container-low flex-grow overflow-y-auto flex flex-col">
+                    <div className="flex-grow">
+                      <h4 className="font-bold text-on-surface mb-4">Lesson Overview</h4>
+                      <p className="text-on-surface-variant leading-relaxed">
+                        {activeVideo.description}
+                      </p>
+                    </div>
+
+                    <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                      <button className="flex-grow bg-secondary text-white py-4 px-6 rounded-2xl font-bold hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20 flex items-center justify-center gap-2">
+                        <Zap size={20} />
+                        Take Lesson Quiz
+                      </button>
+                      <button
+                        onClick={() => setActiveVideo(null)}
+                        className="px-8 bg-white text-on-surface-variant py-4 rounded-2xl font-bold hover:bg-on-surface/5 transition-all border border-on-surface/5"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
       <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-on-surface/5 py-3">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
@@ -924,6 +937,25 @@ function CreatorLogin({ onLogin }: { onLogin: () => void }) {
   );
 }
 
+// Extracts a thumbnail URL from a given video URL
+function getThumbnailFromUrl(url: string): string | null {
+  if (!url) return null;
+
+  // YouTube
+  if (url.includes('youtube.com') || url.includes('youtu.be')) {
+    // Shorts
+    if (url.includes('/shorts/')) {
+      const videoId = url.split('/shorts/')[1]?.split(/[?#]/)[0];
+      if (videoId) return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    }
+    // Standard watch URL
+    const match = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+    if (match) return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+  }
+
+  return null;
+}
+
 function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], onSave: (l: Lesson[]) => void, onLogout: () => void }) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -936,14 +968,30 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
     videoUrl: ''
   });
 
+  const handleVideoUrlChange = (url: string) => {
+    const autoThumb = getThumbnailFromUrl(url);
+    setFormData(prev => ({
+      ...prev,
+      videoUrl: url,
+      // Only auto-fill if user hasn't manually set a thumbnail
+      thumbnail: autoThumb || prev.thumbnail || ''
+    }));
+  };
+
+  // Resolve the active thumbnail to show in the preview
+  const previewThumbnail = formData.thumbnail ||
+    getThumbnailFromUrl(formData.videoUrl || '') ||
+    null;
+
   const handleAdd = () => {
+    const autoThumb = getThumbnailFromUrl(formData.videoUrl || '');
     const newLesson: Lesson = {
       id: editingId || Date.now().toString(),
       title: formData.title || 'Untitled Lesson',
       description: formData.description || '',
       platform: (formData.platform as Platform) || 'YouTube',
       category: formData.category || 'General',
-      thumbnail: formData.thumbnail || `https://picsum.photos/seed/${Date.now()}/1200/600`,
+      thumbnail: formData.thumbnail || autoThumb || `https://picsum.photos/seed/${Date.now()}/1200/600`,
       videoUrl: formData.videoUrl || '',
       tag: 'NEW'
     };
@@ -1136,17 +1184,38 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
                         <input
                           type="text"
                           value={formData.videoUrl}
-                          onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                          onChange={(e) => handleVideoUrlChange(e.target.value)}
                           className="w-full bg-surface-container-low border-none rounded-2xl py-4 pl-14 pr-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
                           placeholder="https://youtube.com/..."
                         />
                       </div>
-                      <button className="bg-surface-container-low text-on-surface-variant p-4 rounded-2xl hover:bg-secondary hover:text-white transition-all flex items-center gap-2 font-bold text-sm">
-                        <Upload size={18} />
-                        Upload
-                      </button>
                     </div>
-                    <p className="text-[10px] text-on-surface-variant mt-2 ml-2 italic">* File uploads are simulated in local mode. Use URLs for real embeds.</p>
+                    {/* Live Thumbnail Preview */}
+                    {previewThumbnail ? (
+                      <div className="mt-4 relative rounded-2xl overflow-hidden aspect-video bg-surface-container-low">
+                        <img
+                          src={previewThumbnail}
+                          alt="Thumbnail preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded-full">PREVIEW</div>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-on-surface-variant mt-2 ml-2 italic">Paste a YouTube URL to auto-generate the thumbnail.</p>
+                    )}
+                  </div>
+
+                  {/* Manual thumbnail override */}
+                  <div className="col-span-2">
+                    <label className="block text-sm font-bold text-on-surface mb-2">Custom Thumbnail URL <span className="font-normal text-on-surface-variant">(optional override)</span></label>
+                    <input
+                      type="text"
+                      value={formData.thumbnail}
+                      onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
+                      className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
+                      placeholder="https://example.com/image.jpg"
+                    />
                   </div>
                 </div>
               </div>
