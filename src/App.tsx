@@ -578,7 +578,7 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className={`bg-white w-full h-full md:h-auto ${isVertical ? 'md:max-w-4xl md:h-[85vh]' : 'md:max-w-5xl'} md:rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col`}
+                className={`bg-white w-full h-full ${isVertical ? 'md:max-w-4xl md:h-[85vh]' : 'md:max-w-5xl md:h-auto'} md:rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col`}
               >
                 <div className="p-6 border-b border-on-surface/5 flex justify-between items-center bg-white shrink-0">
                   <div>
