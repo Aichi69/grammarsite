@@ -304,8 +304,8 @@ export default function App() {
               className="lg:col-span-7"
             >
               <h2 className="text-5xl md:text-7xl font-extrabold text-on-surface leading-[1.1] mb-8">
-                Grammar in <br />
-                <span className="text-secondary">Motion</span>.
+                Grammar <br />
+                <span className="text-secondary">Reels</span>.
               </h2>
               <p className="text-xl text-on-surface-variant max-w-xl mb-10 leading-relaxed">
                 Static textbooks are a thing of the past. Explore our curated collections of bite-sized grammar lessons across your favorite social platforms.
