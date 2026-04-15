@@ -43,6 +43,7 @@ interface Lesson {
   platform?: Platform;
   category?: string;
   videoUrl?: string;
+  created_at?: string; // Preserve Supabase timestamp
 }
 
 const PLATFORM_LESSONS: Record<Platform, Lesson[]> = {
@@ -565,7 +566,7 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
             activeVideo.videoUrl?.includes('/shorts/');
 
           return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center md:p-10">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -577,7 +578,7 @@ function PlatformLessonsView({ platform, lessons, onBack, onNav, activeSection }
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className={`bg-white w-full ${isVertical ? 'max-w-4xl h-[85vh]' : 'max-w-5xl'} rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col`}
+                className={`bg-white w-full h-full md:h-auto ${isVertical ? 'md:max-w-4xl md:h-[85vh]' : 'md:max-w-5xl'} md:rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col`}
               >
                 <div className="p-6 border-b border-on-surface/5 flex justify-between items-center bg-white shrink-0">
                   <div>
@@ -1024,7 +1025,12 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
 
   const handleAdd = () => {
     const autoThumb = getThumbnailFromUrl(formData.videoUrl || '');
+
+    // Find the original lesson if editing to preserve metadata (like created_at)
+    const existingLesson = editingId ? lessons.find(l => l.id === editingId) : {};
+
     const newLesson: Lesson = {
+      ...existingLesson, // Preserve all hidden metadata fields from Supabase
       id: editingId || Date.now().toString(),
       title: formData.title || 'Untitled Lesson',
       description: formData.description || '',
@@ -1032,7 +1038,7 @@ function CreatorDashboard({ lessons, onSave, onLogout }: { lessons: Lesson[], on
       category: formData.category || 'General',
       thumbnail: formData.thumbnail || autoThumb || `https://picsum.photos/seed/${Date.now()}/1200/600`,
       videoUrl: formData.videoUrl || '',
-      tag: 'NEW'
+      tag: (existingLesson as any)?.tag || 'NEW'
     };
 
     if (editingId) {
