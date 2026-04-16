@@ -28,7 +28,9 @@ import {
   Link as LinkIcon,
   Save,
   X,
-  ArrowUpDown
+  ArrowUpDown,
+  Bookmark,
+  Share2
 } from 'lucide-react';
 
 type Section = 'home' | 'lessons' | 'about';
@@ -62,8 +64,15 @@ const CATEGORY_COLORS: Record<string, string> = {
   'General': 'from-slate-600 to-slate-800'
 };
 
+const PLATFORM_COLORS: Record<Platform, string> = {
+  YouTube: 'from-red-600 to-red-700',
+  TikTok: 'from-zinc-900 via-zinc-800 to-black',
+  Instagram: 'from-fuchsia-600 via-pink-600 to-orange-500',
+  Facebook: 'from-blue-600 to-blue-700'
+};
+
 function LessonThumbnail({ lesson, index, className }: { lesson: Lesson, index?: number, className?: string }) {
-  const colorClass = CATEGORY_COLORS[lesson.category || 'General'] || CATEGORY_COLORS['General'];
+  const colorClass = lesson.platform ? PLATFORM_COLORS[lesson.platform] : (CATEGORY_COLORS[lesson.category || 'General'] || CATEGORY_COLORS['General']);
   const hasImage = lesson.thumbnail && !lesson.thumbnail.includes('placeholder') && !lesson.thumbnail.includes('picsum.photos');
 
   const PlatformLogo = () => {
@@ -614,55 +623,20 @@ export default function App() {
   );
 }
 
-function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack, onNav, activeSection }: { platform: Platform, lessons: Lesson[], hasQuizIds: Set<string>, onBack: () => void, onNav: (s: Section) => void, activeSection: Section }) {
-  const [activeVideo, setActiveVideo] = useState<Lesson | null>(null);
+function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platform: Platform, lessons: Lesson[], hasQuizIds: Set<string>, onBack: () => void, onNav: (s: Section) => void, activeSection: Section }) {
+  const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [quizLesson, setQuizLesson] = useState<Lesson | null>(null);
+  const [direction, setDirection] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'az' | 'za' | 'newest' | 'oldest'>('newest');
-  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const touchStartY = useRef<number>(0);
 
-  const getEmbedUrl = (url?: string) => {
-    if (!url) return null;
-
-    // YouTube (including Shorts)
-    if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      // Handle Shorts
-      if (url.includes('/shorts/')) {
-        const videoId = url.split('/shorts/')[1]?.split(/[?#]/)[0];
-        return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
-      }
-
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-      const match = url.match(regExp);
-      return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : url;
-    }
-
-    // Facebook
-    if (url.includes('facebook.com')) {
-      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&width=560`;
-    }
-
-    // Instagram (Reels/Posts)
-    if (url.includes('instagram.com')) {
-      // Instagram embeds usually need /embed at the end
-      const cleanUrl = url.split(/[?#]/)[0];
-      return `${cleanUrl.endsWith('/') ? cleanUrl : cleanUrl + '/'}embed`;
-    }
-
-    // TikTok
-    if (url.includes('tiktok.com')) {
-      const videoIdMatch = url.match(/\/video\/(\d+)/);
-      if (videoIdMatch && videoIdMatch[1]) {
-        return `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}`;
-      }
-      return url;
-    }
-
-    return url;
-  };
-
-  const filteredLessons = lessons.filter(lesson => 
-    lesson.title.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter and sort the lessons
+  const filteredLessons = lessons.filter(lesson =>
+    lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    lesson.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    lesson.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const sortedLessons = [...filteredLessons].sort((a, b) => {
@@ -677,93 +651,368 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack, onNav, act
     return 0;
   });
 
+  const lesson = sortedLessons[currentIdx] ?? null;
+
+  const getEmbedUrl = (url?: string): string | null => {
+    if (!url) return null;
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      if (url.includes('/shorts/')) {
+        const videoId = url.split('/shorts/')[1]?.split(/[?#]/)[0];
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+      }
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : url;
+    }
+    if (url.includes('facebook.com')) {
+      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&width=560`;
+    }
+    if (url.includes('instagram.com')) {
+      const cleanUrl = url.split(/[?#]/)[0];
+      return `${cleanUrl.endsWith('/') ? cleanUrl : cleanUrl + '/'}embed`;
+    }
+    if (url.includes('tiktok.com')) {
+      const videoIdMatch = url.match(/\/video\/(\d+)/);
+      if (videoIdMatch && videoIdMatch[1]) {
+        return `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}`;
+      }
+      return url;
+    }
+    return url;
+  };
+
+  const navigate = (newIdx: number) => {
+    if (newIdx < 0 || newIdx >= sortedLessons.length) return;
+    setDirection(newIdx > currentIdx ? 1 : -1);
+    setCurrentIdx(newIdx);
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') navigate(currentIdx + 1);
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') navigate(currentIdx - 1);
+      else if (e.key === 'Escape') onBack();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [currentIdx, sortedLessons.length]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStartY.current - e.changedTouches[0].clientY;
+    if (Math.abs(diff) > 55) navigate(diff > 0 ? currentIdx + 1 : currentIdx - 1);
+  };
+
+  const PLATFORM_BADGE: Record<Platform, string> = {
+    YouTube: 'bg-red-600',
+    TikTok: 'bg-zinc-900 border border-white/20',
+    Instagram: 'bg-pink-600',
+    Facebook: 'bg-blue-600',
+  };
+
+  const isVertical =
+    platform === 'TikTok' ||
+    platform === 'Instagram' ||
+    lesson?.videoUrl?.includes('/shorts/');
+
+  const embedUrl = getEmbedUrl(lesson?.videoUrl);
+
+  const slideVariants = {
+    enter: (dir: number) => ({ y: dir > 0 ? '100%' : '-100%', opacity: 0 }),
+    center: { y: 0, opacity: 1 },
+    exit: (dir: number) => ({ y: dir > 0 ? '-40%' : '40%', opacity: 0 }),
+  };
+
+  // Empty state
+  if (sortedLessons.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center text-white">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={onBack}
+          className="absolute top-6 left-6 w-10 h-10 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center"
+        >
+          <ArrowLeft size={20} />
+        </motion.button>
+        <MonitorPlay size={64} className="opacity-20 mb-4" />
+        <h3 className="text-2xl font-black mb-2">No Lessons Yet</h3>
+        <p className="text-white/50 text-center max-w-xs px-6">
+          No {platform} lessons uploaded yet. Check back soon!
+        </p>
+        <button
+          onClick={onBack}
+          className="mt-8 bg-white/15 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold hover:bg-white/25 transition-all"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Video Modal */}
-      <AnimatePresence>
-        {activeVideo && (() => {
-          const isVertical = activeVideo.platform === 'TikTok' ||
-            activeVideo.platform === 'Instagram' ||
-            activeVideo.videoUrl?.includes('/shorts/');
+    <div
+      className="fixed inset-0 bg-black z-50 overflow-hidden select-none"
+    >
+      {/* ── Mobile Swipe Edge Zones ── */}
+      {/* Left zone */}
+      <div 
+        className="absolute left-0 top-0 bottom-0 w-16 z-40" 
+        onTouchStart={handleTouchStart} 
+        onTouchEnd={handleTouchEnd}
+      />
+      {/* Right zone (excludes action bar area) */}
+      <div 
+        className="absolute right-20 top-0 bottom-0 w-16 z-40" 
+        onTouchStart={handleTouchStart} 
+        onTouchEnd={handleTouchEnd}
+      />
 
-          return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center md:p-10">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setActiveVideo(null)}
-                className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+      {/* ── Animated Slide ── */}
+      <AnimatePresence custom={direction} mode="wait">
+        <motion.div
+          key={lesson?.id || 'empty'}
+          custom={direction}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="absolute inset-0"
+        >
+          {/* ── Blurred Background Fill (for vertical videos) ── */}
+          {lesson && isVertical && (
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <LessonThumbnail
+                lesson={lesson}
+                className="absolute inset-0 w-full h-full scale-110 blur-3xl opacity-50 brightness-50"
               />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className={`bg-white w-full h-full ${isVertical ? 'md:max-w-4xl md:h-[85vh]' : 'md:max-w-5xl md:max-h-[90vh] md:h-auto'} md:rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col`}
-              >
-                <div className="p-6 border-b border-on-surface/5 flex justify-between items-center bg-white shrink-0">
-                  <div>
-                    <h3 className="text-xl font-bold text-on-surface">{activeVideo.title}</h3>
-                    <p className="text-xs text-on-surface-variant font-medium uppercase tracking-widest mt-1">{activeVideo.platform} • {activeVideo.category || 'Lesson'}</p>
-                  </div>
-                  <button
-                    onClick={() => setActiveVideo(null)}
-                    className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-on-surface-variant"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
+            </div>
+          )}
 
-                <div className={`flex-grow flex flex-col ${isVertical ? 'md:flex-row' : ''} overflow-hidden`}>
-                  {/* Video Section */}
-                  <div className={`${isVertical ? 'md:w-[45%] h-[60%] md:h-full' : 'aspect-video w-full'} bg-black relative shrink-0`}>
-                    {activeVideo.videoUrl ? (
-                      <iframe
-                        src={getEmbedUrl(activeVideo.videoUrl) || ''}
-                        className="w-full h-full border-none"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={activeVideo.title}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 p-10 text-center">
-                        <MonitorPlay size={64} className="mb-4 opacity-20" />
-                        <p className="text-xl font-bold">No Video URL Provided</p>
-                      </div>
+          {/* Video / Thumbnail */}
+          <div className="absolute inset-0 flex items-center justify-center bg-transparent">
+            {lesson ? (
+              embedUrl ? (
+                <iframe
+                  src={embedUrl}
+                  className={
+                    isVertical
+                      ? 'h-full w-auto aspect-[9/16] max-w-full border-0 shadow-2xl z-10'
+                      : 'w-full h-full border-0'
+                  }
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={lesson?.title}
+                />
+              ) : (
+                <LessonThumbnail
+                  lesson={lesson}
+                  index={currentIdx}
+                  className="absolute inset-0 w-full h-full"
+                />
+              )
+            ) : (
+                <div className="flex flex-col items-center gap-4 text-white/20">
+                    <Search size={64} />
+                    <p className="text-lg font-bold">No matching lessons</p>
+                </div>
+            )}
+          </div>
+
+          {/* Gradient overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none z-20" />
+
+          {/* ── Bottom lesson info bar ── */}
+          {lesson && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className="absolute bottom-0 left-0 right-20 px-5 pb-10 pointer-events-none z-30"
+            >
+              <div className="flex flex-col gap-2 max-w-lg">
+                <div className="flex items-center gap-2 pointer-events-auto">
+                  <span className="text-white font-black text-sm tracking-tight">
+                    @{platform.toLowerCase()}_grammar
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase text-white shadow-sm ${PLATFORM_BADGE[platform]}`}>
+                    {platform}
+                  </span>
+                </div>
+                
+                <h3 className="text-white font-black text-xl md:text-2xl leading-tight drop-shadow-md">
+                  {lesson.title}
+                </h3>
+                
+                <p className="text-white/80 text-xs md:text-sm line-clamp-2 leading-relaxed font-medium">
+                  {lesson.description}
+                </p>
+
+                {lesson.category && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-secondary font-black text-[10px] uppercase tracking-widest">
+                      #{lesson.category.replace(/\s+/g, '')}
+                    </span>
+                    {lesson.duration && (
+                      <span className="bg-white/10 backdrop-blur-md px-2 py-0.5 rounded text-[9px] text-white/60 font-bold">
+                        {lesson.duration}
+                      </span>
                     )}
                   </div>
+                )}
+              </div>
+            </motion.div>
+          )}
 
-                  {/* Details Section */}
-                  <div className="p-8 bg-surface-container-low flex-grow overflow-y-auto flex flex-col">
-                    <div className="flex-grow">
-                      <h4 className="font-bold text-on-surface mb-4">Lesson Overview</h4>
-                      <p className="text-on-surface-variant leading-relaxed">
-                        {activeVideo.description}
-                      </p>
-                    </div>
-
-                    <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                      <button
-                        onClick={() => { setActiveVideo(null); setQuizLesson(activeVideo); }}
-                        className="flex-grow bg-secondary text-white py-4 px-6 rounded-2xl font-bold hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20 flex items-center justify-center gap-2"
-                      >
-                        <Zap size={20} />
-                        Take Lesson Quiz
-                      </button>
-                      <button
-                        onClick={() => setActiveVideo(null)}
-                        className="px-8 bg-white text-on-surface-variant py-4 rounded-2xl font-bold hover:bg-on-surface/5 transition-all border border-on-surface/5"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          );
-        })()}
+          {/* Right Action Bar (TikTok-style sidebar) */}
+          {lesson && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="absolute right-4 bottom-16 flex flex-col items-center gap-6 z-30"
+            >
+              <FeedActionButton
+                icon={<GraduationCap size={26} />}
+                label="Quiz"
+                active={hasQuizIds.has(lesson.id)}
+                onClick={() => setQuizLesson(lesson)}
+              />
+              <FeedActionButton icon={<Bookmark size={24} />} label="Save" />
+              <FeedActionButton icon={<Share2 size={24} />} label="Share" />
+            </motion.div>
+          )}
+        </motion.div>
       </AnimatePresence>
+
+      {/* ── Fixed UI (does not animate with slides) ── */}
+
+      {/* Top Header */}
+      <div className="absolute top-0 inset-x-0 z-30 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+        <div className="flex items-center justify-between px-5 pt-4 pb-12 pointer-events-auto">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={onBack}
+            className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/30 transition-colors"
+          >
+            <ArrowLeft size={20} />
+          </motion.button>
+
+          <div className="text-center">
+            <p className="text-white font-black text-base tracking-wide uppercase tracking-widest">{platform}</p>
+            <p className="text-white/40 text-[10px] font-medium uppercase mt-0.5">
+              {sortedLessons.length > 0 ? `${currentIdx + 1} / ${sortedLessons.length}` : '0 / 0'}
+            </p>
+          </div>
+
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowFilters(!showFilters)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${showFilters ? 'bg-secondary text-white' : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/30'}`}
+          >
+            <Search size={20} />
+          </motion.button>
+        </div>
+
+        {/* Search / Sort Overlay */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="px-5 pb-6 pointer-events-auto max-w-md mx-auto"
+            >
+              <div className="bg-white/10 backdrop-blur-xl rounded-[2rem] p-4 border border-white/10 shadow-2xl space-y-4">
+                <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-secondary transition-colors" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Search lessons..."
+                        value={searchQuery}
+                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentIdx(0); }}
+                        className="w-full bg-white/5 border-none rounded-2xl py-3 pl-12 pr-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-secondary/50 transition-all text-sm"
+                    />
+                </div>
+                <div className="flex gap-2">
+                    {[
+                        { id: 'newest', label: 'Newest' },
+                        { id: 'az', label: 'Title' }
+                    ].map(opt => (
+                        <button
+                            key={opt.id}
+                            onClick={() => { setSortBy(opt.id as any); setCurrentIdx(0); }}
+                            className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${sortBy === opt.id ? 'bg-secondary text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Desktop Prev/Next arrows */}
+      <div className="hidden md:flex absolute bottom-6 left-1/2 -translate-x-1/2 z-30 items-center gap-4">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => navigate(currentIdx - 1)}
+          disabled={currentIdx === 0}
+          className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md text-white flex items-center justify-center disabled:opacity-25 hover:bg-white/25 transition-colors"
+        >
+          <ChevronLeft size={22} />
+        </motion.button>
+        <span className="text-white/30 text-[10px] font-bold tracking-widest uppercase">
+          ↑ ↓ Arrow Keys
+        </span>
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => navigate(currentIdx + 1)}
+          disabled={currentIdx === sortedLessons.length - 1}
+          className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md text-white flex items-center justify-center disabled:opacity-25 hover:bg-white/25 transition-colors"
+        >
+          <ChevronRight size={22} />
+        </motion.button>
+      </div>
+
+      {/* Mobile swipe hint */}
+      <div className="md:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+        {currentIdx < sortedLessons.length - 1 && (
+          <motion.div
+            animate={{ y: [0, 7, 0] }}
+            transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
+            className="flex flex-col items-center gap-0.5"
+          >
+            <div className="w-6 h-0.5 bg-white/35 rounded-full" />
+            <div className="w-4 h-0.5 bg-white/20 rounded-full" />
+          </motion.div>
+        )}
+      </div>
+
+      {/* Progress sidebar dots */}
+      {sortedLessons.length > 1 && sortedLessons.length <= 40 && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1">
+          {sortedLessons.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => navigate(i)}
+              aria-label={`Go to lesson ${i + 1}`}
+              className={`rounded-full transition-all duration-300 ${
+                i === currentIdx
+                  ? 'w-1.5 h-6 bg-white'
+                  : 'w-1 h-1.5 bg-white/25 hover:bg-white/50'
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Quiz Player */}
       <AnimatePresence>
@@ -775,238 +1024,41 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack, onNav, act
           />
         )}
       </AnimatePresence>
-      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-on-surface/5 py-3">
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={onBack}>
-            <BookOpen className="text-secondary w-8 h-8" />
-            <h1 className="text-xl md:text-2xl font-extrabold text-secondary tracking-tight">GrammarFlow</h1>
-          </div>
-
-          <nav className="flex items-center gap-2 md:gap-4">
-            <NavButton
-              active={false}
-              onClick={() => onNav('home')}
-              icon={<Home size={20} />}
-              label="Home"
-            />
-            <NavButton
-              active={true}
-              onClick={() => onNav('lessons')}
-              icon={<BookOpen size={20} />}
-              label="Lessons"
-            />
-            <NavButton
-              active={false}
-              onClick={() => onNav('about')}
-              icon={<Info size={20} />}
-              label="About Us"
-            />
-          </nav>
-
-          <div className="flex items-center gap-4">
-            <button className="text-on-surface-variant hover:text-secondary transition-colors">
-              <Users size={20} />
-            </button>
-            <button className="bg-secondary text-white px-6 py-2 rounded-full font-bold hover:bg-secondary-dim transition-all">
-              Sign In
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-grow pt-32 pb-20">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="mb-16 text-center relative">
-            <span className="inline-block bg-secondary/10 text-secondary px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4">
-              LEARNING HUB
-            </span>
-            <h2 className="text-5xl md:text-6xl font-extrabold text-on-surface mb-6">
-              {platform} <span className="text-secondary">Lessons</span>
-            </h2>
-            <p className="text-on-surface-variant text-lg max-w-2xl mx-auto leading-relaxed mb-10">
-              Master English nuances through our fluid cinematic curriculum. Break the grid of traditional learning.
-            </p>
-
-            {/* Search and Sort Bar */}
-            <div className="max-w-xl mx-auto flex gap-4 items-center mb-10">
-              <div className="flex-grow relative group">
-                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-on-surface-variant group-focus-within:text-secondary transition-colors">
-                  <Search size={20} />
-                </div>
-                <input
-                  type="text"
-                  placeholder={`Search ${platform} lessons...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-surface-container-low border-none rounded-2xl py-4 pl-14 pr-6 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-secondary/20 transition-all shadow-sm"
-                />
-              </div>
-
-              <div className="relative">
-                <button
-                  onClick={() => setShowSortMenu(!showSortMenu)}
-                  className={`p-4 rounded-2xl transition-all flex items-center gap-2 font-bold shadow-sm ${showSortMenu ? 'bg-secondary text-white' : 'bg-surface-container-low text-on-surface-variant hover:bg-on-surface/5'}`}
-                >
-                  <ArrowUpDown size={20} />
-                  <span className="hidden sm:inline">Sort</span>
-                </button>
-
-                <AnimatePresence>
-                  {showSortMenu && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-on-surface/5 p-2 z-50 overflow-hidden"
-                      >
-                        {[
-                          { id: 'az', label: 'A to Z', icon: 'az' },
-                          { id: 'za', label: 'Z to A', icon: 'za' },
-                          { id: 'newest', label: 'Newest First', icon: 'new' },
-                          { id: 'oldest', label: 'Oldest First', icon: 'old' },
-                        ].map((option) => (
-                          <button
-                            key={option.id}
-                            onClick={() => { setSortBy(option.id as any); setShowSortMenu(false); }}
-                            className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-colors mb-1 last:mb-0 ${sortBy === option.id ? 'bg-secondary/10 text-secondary' : 'text-on-surface-variant hover:bg-on-surface/5'}`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-
-            <button className="absolute top-0 right-0 p-3 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-secondary hover:text-white transition-all hidden md:block">
-              <Zap size={20} />
-            </button>
-          </div>
-
-          <div className="space-y-12 mb-16">
-            {sortedLessons.length > 0 ? (
-              sortedLessons.map((lesson, idx) => (
-                <motion.div
-                  key={lesson.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="bg-white rounded-[2rem] overflow-hidden shadow-2xl shadow-on-surface/5 border border-on-surface/5 group"
-                >
-                  <div
-                    className="relative aspect-video overflow-hidden cursor-pointer"
-                    onClick={() => setActiveVideo(lesson)}
-                  >
-                    <LessonThumbnail
-                      lesson={lesson}
-                      index={idx}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    />
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center text-secondary shadow-xl">
-                        <PlayCircle size={32} fill="currentColor" className="text-white" />
-                        <PlayCircle size={32} className="absolute text-secondary" />
-                      </div>
-                    </div>
-
-                    {/* Quiz Badge */}
-                    <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 z-20 ${hasQuizIds.has(lesson.id)
-                      ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20'
-                      : 'bg-black/40 backdrop-blur-md text-white/70'
-                      }`}>
-                      <Zap size={10} fill={hasQuizIds.has(lesson.id) ? "currentColor" : "none"} />
-                      {hasQuizIds.has(lesson.id) ? 'Quiz Ready' : 'Video Lesson'}
-                    </div>
-                    {lesson.duration && (
-                      <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold">
-                        {lesson.duration}
-                      </div>
-                    )}
-                    {lesson.tag && (
-                      <div className="absolute bottom-4 left-4 bg-tertiary text-on-tertiary px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
-                        {lesson.tag}
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-8 md:p-10">
-                    <h3 className="text-3xl font-bold text-on-surface mb-4">{lesson.title}</h3>
-                    <p className="text-on-surface-variant text-lg mb-8 leading-relaxed">
-                      {lesson.description}
-                    </p>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setQuizLesson(lesson); }}
-                      className="w-full bg-secondary text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20"
-                    >
-                      Start Quiz
-                      <ArrowRight size={20} />
-                    </button>
-                  </div>
-                </motion.div>
-              ))
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-20 bg-surface-container-low rounded-[3rem]"
-              >
-                <div className="mb-6 inline-flex p-6 bg-white rounded-full text-on-surface-variant/20">
-                  <Search size={48} />
-                </div>
-                <h3 className="text-2xl font-bold text-on-surface mb-2">No lessons found</h3>
-                <p className="text-on-surface-variant">We couldn't find any lessons matching "{searchQuery}"</p>
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="mt-6 text-secondary font-bold hover:underline"
-                >
-                  Clear search
-                </button>
-              </motion.div>
-            )}
-          </div>
-
-          <div className="flex justify-center">
-            <button
-              onClick={onBack}
-              className="flex items-center gap-2 text-on-surface-variant hover:text-secondary font-bold transition-all group"
-            >
-              <div className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-all">
-                <ArrowLeft size={20} />
-              </div>
-              Back to All Channels
-            </button>
-          </div>
-        </div>
-
-        {/* Floating Back Button */}
-        <motion.button
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          whileHover={{ x: -10 }}
-          onClick={onBack}
-          className="fixed right-0 top-1/2 -translate-y-1/2 bg-secondary text-white pl-4 pr-6 py-4 rounded-l-full shadow-2xl flex items-center gap-3 z-50 hover:bg-secondary-dim transition-all group"
-          title="Go Back"
-        >
-          <ArrowLeft size={24} />
-          <span className="font-bold text-sm tracking-wide">BACK</span>
-        </motion.button>
-      </main>
-
-      <footer className="bg-surface-container-low py-10 border-t border-on-surface/5">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-on-surface-variant text-sm">© 2024 GrammarFlow. The Fluid Classroom.</p>
-          <div className="flex gap-8 text-on-surface-variant text-sm">
-            <a href="#" className="hover:text-secondary">Terms of Service</a>
-            <a href="#" className="hover:text-secondary">Privacy Policy</a>
-            <a href="#" className="hover:text-secondary">Contact Support</a>
-            <a href="#" className="hover:text-secondary">Careers</a>
-          </div>
-        </div>
-      </footer>
     </div>
+  );
+}
+
+function FeedActionButton({
+  icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <motion.button
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.85 }}
+      onClick={onClick}
+      className="flex flex-col items-center gap-1.5"
+    >
+      <div
+        className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${
+          active
+            ? 'bg-amber-400 text-amber-900 shadow-xl shadow-amber-400/40'
+            : 'bg-white/20 text-white hover:bg-white/30'
+        }`}
+      >
+        {icon}
+      </div>
+      <span className="text-white text-[9px] font-bold uppercase tracking-wider drop-shadow-lg">
+        {label}
+      </span>
+    </motion.button>
   );
 }
 
@@ -1293,7 +1345,7 @@ function CreatorDashboard({ lessons, onSave, onDelete, hasQuizIds, onQuizSaved, 
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
-            {lessons.map((lesson) => (
+            {lessons.map((lesson, idx) => (
               <motion.div
                 key={lesson.id}
                 layout
@@ -1305,6 +1357,7 @@ function CreatorDashboard({ lessons, onSave, onDelete, hasQuizIds, onQuizSaved, 
                 <div className="aspect-video relative overflow-hidden">
                   <LessonThumbnail
                     lesson={lesson}
+                    index={lessons.length - idx - 1} // Numbering based on total count
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-4 left-4 bg-secondary text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
