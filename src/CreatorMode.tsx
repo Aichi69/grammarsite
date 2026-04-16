@@ -306,72 +306,94 @@ export function CreatorDashboard({
                     <p className="text-on-surface-variant">Manage your fluid grammar lessons across all platforms.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <AnimatePresence>
-                        {lessons.map((lesson, idx) => (
-                            <motion.div
-                                key={lesson.id}
-                                layout
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                className="bg-white rounded-3xl overflow-hidden shadow-xl border border-on-surface/5 group"
-                            >
-                                <div className="aspect-video relative overflow-hidden">
-                                    <LessonThumb lesson={lesson} index={lessons.length - idx - 1} className="w-full h-full object-cover" />
-                                    <div className="absolute top-4 left-4 bg-secondary text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
-                                        {lesson.platform}
-                                    </div>
-                                    <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 ${hasQuizIds.has(lesson.id)
-                                        ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20'
-                                        : 'bg-black/40 backdrop-blur-md text-white/50'
-                                        }`}>
-                                        <Zap size={10} fill={hasQuizIds.has(lesson.id) ? 'currentColor' : 'none'} />
-                                        {hasQuizIds.has(lesson.id) ? 'Active' : 'Missing Quiz'}
-                                    </div>
-                                </div>
-                                <div className="p-6">
-                                    <h3 className="text-xl font-bold text-on-surface mb-2 line-clamp-1">{lesson.title}</h3>
-                                    <p className="text-on-surface-variant text-sm mb-6 line-clamp-2">{lesson.description}</p>
-                                    <div className="flex justify-between items-center pt-4 border-t border-on-surface/5">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-secondary uppercase tracking-widest leading-tight">{lesson.topic}</span>
-                                            {lesson.subtopic && <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{lesson.subtopic}</span>}
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => setQuizLessonId({ id: lesson.id, title: lesson.title })}
-                                                className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-tertiary-container hover:text-on-tertiary-container transition-all"
-                                                title="Edit Quiz"
-                                            >
-                                                <Zap size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => startEdit(lesson)}
-                                                className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-secondary hover:text-white transition-all"
-                                            >
-                                                <Edit size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(lesson.id)}
-                                                className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-red-500 hover:text-white transition-all"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
+                {(() => {
+                    const groupedLessons: Record<string, Lesson[]> = {};
+                    for (const lesson of lessons) {
+                        const t = lesson.topic || 'General';
+                        if (!groupedLessons[t]) groupedLessons[t] = [];
+                        groupedLessons[t].push(lesson);
+                    }
+                    const topicsWithLessons = Object.keys(groupedLessons).sort();
 
-                    {lessons.length === 0 && !isAdding && (
-                        <div className="col-span-full py-20 flex flex-col items-center justify-center text-on-surface-variant opacity-50">
-                            <PlayCircle size={64} className="mb-4" />
-                            <p className="text-xl font-bold">No content yet. Click "Add Content" to start.</p>
+                    if (topicsWithLessons.length === 0 && !isAdding) {
+                        return (
+                            <div className="py-20 flex flex-col items-center justify-center text-on-surface-variant opacity-50">
+                                <PlayCircle size={64} className="mb-4" />
+                                <p className="text-xl font-bold">No content yet. Click "Add Content" to start.</p>
+                            </div>
+                        );
+                    }
+
+                    return topicsWithLessons.map(t => (
+                        <div key={t} className="mb-12">
+                            <h3 className="text-2xl font-bold text-on-surface mb-4 flex items-center gap-3">
+                                {t}
+                                <span className="text-sm font-bold bg-white shadow-sm px-3 py-1 rounded-full text-on-surface-variant">
+                                    {groupedLessons[t].length} lessons
+                                </span>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <AnimatePresence>
+                                    {groupedLessons[t].map((lesson, idx) => (
+                                        <motion.div
+                                            key={lesson.id}
+                                            layout
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.9 }}
+                                            className="bg-white rounded-3xl overflow-hidden shadow-xl border border-on-surface/5 group"
+                                        >
+                                            <div className="aspect-video relative overflow-hidden">
+                                                <LessonThumb lesson={lesson} index={lessons.length - idx - 1} className="w-full h-full object-cover" />
+                                                <div className="absolute top-4 left-4 bg-secondary text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
+                                                    {lesson.platform}
+                                                </div>
+                                                <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 ${hasQuizIds.has(lesson.id)
+                                                    ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20'
+                                                    : 'bg-black/40 backdrop-blur-md text-white/50'
+                                                    }`}>
+                                                    <Zap size={10} fill={hasQuizIds.has(lesson.id) ? 'currentColor' : 'none'} />
+                                                    {hasQuizIds.has(lesson.id) ? 'Active' : 'Missing Quiz'}
+                                                </div>
+                                            </div>
+                                            <div className="p-6">
+                                                <h3 className="text-xl font-bold text-on-surface mb-2 line-clamp-1">{lesson.title}</h3>
+                                                <p className="text-on-surface-variant text-sm mb-6 line-clamp-2">{lesson.description}</p>
+                                                <div className="flex justify-between items-center pt-4 border-t border-on-surface/5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-secondary uppercase tracking-widest leading-tight">{lesson.topic}</span>
+                                                        {lesson.subtopic && <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{lesson.subtopic}</span>}
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => setQuizLessonId({ id: lesson.id, title: lesson.title })}
+                                                            className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-tertiary-container hover:text-on-tertiary-container transition-all"
+                                                            title="Edit Quiz"
+                                                        >
+                                                            <Zap size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => startEdit(lesson)}
+                                                            className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-secondary hover:text-white transition-all"
+                                                        >
+                                                            <Edit size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(lesson.id)}
+                                                            className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-red-500 hover:text-white transition-all"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
                         </div>
-                    )}
-                </div>
+                    ));
+                })()}
             </main>
 
             {/* Add / Edit modal */}
