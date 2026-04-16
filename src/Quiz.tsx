@@ -104,9 +104,10 @@ export function QuizBuilder({ lessonId, lessonTitle, onClose }: QuizBuilderProps
     const handleSave = async () => {
         setSaving(true);
         const payload = {
-            id: quizId || Date.now().toString(),
+            id: quizId || (Date.now().toString() + Math.random().toString(36).substring(2, 9)),
             lesson_id: lessonId,
-            questions
+            questions,
+            created_at: new Date().toISOString() // Let DB handle update if existing, but provide for new
         };
 
         const { error } = await supabase.from('quizzes').upsert(payload);

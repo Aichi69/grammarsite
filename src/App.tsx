@@ -180,7 +180,15 @@ export default function App() {
 
   const saveLessons = async (updated: Lesson[]) => {
     setLocalLessons(updated);
-    const { error } = await supabase.from('lessons').upsert(updated);
+    
+    // Fix: PostgREST bulk upserts fill missing columns with null.
+    // We must ensure all objects have a created_at if the DB column is NOT NULL.
+    const toUpsert = updated.map(lesson => ({
+      ...lesson,
+      created_at: lesson.created_at || new Date().toISOString()
+    }));
+
+    const { error } = await supabase.from('lessons').upsert(toUpsert);
     if (error) console.error('Error saving lessons:', error);
   };
 
@@ -1215,14 +1223,15 @@ function CreatorDashboard({ lessons, onSave, onDelete, hasQuizIds, onQuizSaved, 
 
     const newLesson: Lesson = {
       ...existingLesson, // Preserve all hidden metadata fields from Supabase
-      id: editingId || Date.now().toString(),
+      id: editingId || (Date.now().toString() + Math.random().toString(36).substring(2, 9)),
       title: formData.title || 'Untitled Lesson',
       description: formData.description || '',
       platform: (formData.platform as Platform) || 'YouTube',
       category: formData.category || 'General',
       thumbnail: formData.thumbnail || autoThumb || `https://picsum.photos/seed/${Date.now()}/1200/600`,
       videoUrl: formData.videoUrl || '',
-      tag: (existingLesson as any)?.tag || 'NEW'
+      tag: (existingLesson as any)?.tag || 'NEW',
+      created_at: (existingLesson as any)?.created_at || new Date().toISOString()
     };
 
     if (editingId) {
