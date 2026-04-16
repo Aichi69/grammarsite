@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { motion, AnimatePresence } from 'motion/react';
 import { QuizBuilder, QuizPlayer } from './Quiz';
+import TopicProfileView from './TopicProfileView';
+import ChannelProfileView from './ChannelProfileView';
+import { CreatorLogin, CreatorDashboard, getThumbnailFromUrl } from './CreatorMode';
 import {
   Home,
   BookOpen,
@@ -19,18 +22,17 @@ import {
   TrendingUp,
   ArrowRight,
   ArrowLeft,
-  Search,
-  Plus,
-  Trash2,
-  Edit,
-  LogOut,
-  Upload,
-  Link as LinkIcon,
-  Save,
-  X,
   ArrowUpDown,
+  Search,
   Bookmark,
-  Share2
+  Share2,
+  Clock,
+  Layout,
+  PenTool,
+  AlertCircle,
+  Mic,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 
 type Section = 'home' | 'lessons' | 'about';
@@ -44,10 +46,21 @@ interface Lesson {
   tag?: string;
   duration?: string;
   platform?: Platform;
-  category?: string;
+  topic?: string;
+  subtopic?: string;
   videoUrl?: string;
   created_at?: string; // Preserve Supabase timestamp
 }
+
+const TOPICS = [
+  { id: 'Parts of Speech', title: 'Parts of Speech', icon: <BookOpen className="text-indigo-500" size={24} />, desc: 'Nouns, Verbs, Adjectives, Adverbs, and more...', bg: 'bg-indigo-50' },
+  { id: 'Verb Tenses & Aspects', title: 'Verb Tenses & Aspects', icon: <Clock className="text-emerald-500" size={24} />, desc: 'Present, Past, Future, Perfect, and Continuous...', bg: 'bg-emerald-50' },
+  { id: 'Sentence Structure & Syntax', title: 'Sentence Structure & Syntax', icon: <Layout className="text-amber-500" size={24} />, desc: 'Clauses, Phrases, Conjunctions, and Sentence Logic...', bg: 'bg-amber-50' },
+  { id: 'Mechanics & Punctuation', title: 'Mechanics & Punctuation', icon: <PenTool className="text-rose-500" size={24} />, desc: 'Commas, Semicolons, Quotes, and Formatting...', bg: 'bg-rose-50' },
+  { id: 'Advanced Grammatical Concepts', title: 'Advanced Grammatical Concepts', icon: <Zap className="text-purple-500" size={24} />, desc: 'Conditionals, Modals, Passive Voice, and Nuances...', bg: 'bg-purple-50' },
+  { id: 'Common Usage Pitfalls', title: 'Common Usage Pitfalls', icon: <AlertCircle className="text-orange-500" size={24} />, desc: 'Common Mistakes, Easily Confused Words...', bg: 'bg-orange-50' },
+  { id: 'Pronunciation', title: 'Pronunciation', icon: <Mic className="text-cyan-500" size={24} />, desc: 'Sounds, Stress, Intonation, and Rhythm...', bg: 'bg-cyan-50' },
+];
 
 const PLATFORM_LESSONS: Record<Platform, Lesson[]> = {
   YouTube: [],
@@ -56,7 +69,7 @@ const PLATFORM_LESSONS: Record<Platform, Lesson[]> = {
   Facebook: []
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
+const TOPIC_COLORS: Record<string, string> = {
   'Grammar': 'from-indigo-600 to-purple-600',
   'Vocabulary': 'from-emerald-500 to-teal-600',
   'Pronunciation': 'from-amber-400 to-orange-500',
@@ -72,7 +85,7 @@ const PLATFORM_COLORS: Record<Platform, string> = {
 };
 
 function LessonThumbnail({ lesson, index, className }: { lesson: Lesson, index?: number, className?: string }) {
-  const colorClass = lesson.platform ? PLATFORM_COLORS[lesson.platform] : (CATEGORY_COLORS[lesson.category || 'General'] || CATEGORY_COLORS['General']);
+  const colorClass = lesson.platform ? PLATFORM_COLORS[lesson.platform] : (TOPIC_COLORS[lesson.topic || 'General'] || TOPIC_COLORS['General']);
   const hasImage = lesson.thumbnail && !lesson.thumbnail.includes('placeholder') && !lesson.thumbnail.includes('picsum.photos');
 
   const PlatformLogo = () => {
@@ -119,7 +132,8 @@ function LessonThumbnail({ lesson, index, className }: { lesson: Lesson, index?:
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<Section>('home');
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isCreatorMode, setIsCreatorMode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -189,7 +203,7 @@ export default function App() {
 
   const saveLessons = async (updated: Lesson[]) => {
     setLocalLessons(updated);
-    
+
     // Fix: PostgREST bulk upserts fill missing columns with null.
     // We must ensure all objects have a created_at if the DB column is NOT NULL.
     const toUpsert = updated.map(lesson => ({
@@ -220,19 +234,35 @@ export default function App() {
     }
   };
 
-  const getMergedLessons = (platform: Platform) => {
-    const hardcoded = PLATFORM_LESSONS[platform] || [];
-    const local = localLessons.filter(l => l.platform === platform);
-    return [...local, ...hardcoded];
+  const getMergedLessons = (topicTitle: string) => {
+    return localLessons.filter(l => l.topic === topicTitle);
   };
+
+  function TopicCard({ icon, iconBg, title, description, lessons, onClick }: any) {
+    return (
+      <div
+        onClick={onClick}
+        className="bg-white rounded-3xl p-8 hover:shadow-2xl transition-all cursor-pointer border border-on-surface/5 group hover:border-secondary/20 h-full flex flex-col"
+      >
+        <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+          {icon}
+        </div>
+        <h4 className="text-xl font-bold text-on-surface mb-3 group-hover:text-secondary transition-colors line-clamp-2">{title}</h4>
+        <p className="text-sm text-on-surface-variant leading-relaxed mb-6 flex-grow">{description}</p>
+        <div className="pt-6 border-t border-on-surface/5 mt-auto">
+          <span className="text-xs font-bold text-secondary">{lessons}</span>
+        </div>
+      </div>
+    );
+  }
 
   const scrollTo = (section: Section) => {
     if (isCreatorMode) {
       window.location.pathname = '/';
       return;
     }
-    if (selectedPlatform) {
-      setSelectedPlatform(null);
+    if (selectedTopic) {
+      setSelectedTopic(null);
       // Small timeout to allow the main view to mount before scrolling
       setTimeout(() => {
         const refs = { home: homeRef, lessons: lessonsRef, about: aboutRef };
@@ -276,15 +306,32 @@ export default function App() {
     );
   }
 
-  if (selectedPlatform) {
+  if (selectedTopic && selectedLessonId) {
     return (
       <PlatformLessonsView
-        platform={selectedPlatform}
-        lessons={getMergedLessons(selectedPlatform)}
+        topic={selectedTopic}
+        lessons={getMergedLessons(selectedTopic)}
         hasQuizIds={lessonsWithQuizzes}
-        onBack={() => scrollTo('lessons')}
-        onNav={(section) => scrollTo(section)}
-        activeSection={activeSection}
+        initialLessonId={selectedLessonId}
+        onBack={() => {
+          console.log('Back from Feed to Profile');
+          setSelectedLessonId(null);
+        }}
+      />
+    );
+  }
+
+  if (selectedTopic) {
+    return (
+      <TopicProfileView
+        topic={selectedTopic}
+        lessons={getMergedLessons(selectedTopic)}
+        hasQuizIds={lessonsWithQuizzes}
+        onBack={() => {
+          console.log('Navigation: Topic Grid -> Home');
+          scrollTo('lessons');
+        }}
+        onVideoClick={(id) => setSelectedLessonId(id)}
       />
     );
   }
@@ -292,37 +339,38 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation Header */}
-      <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-background/80 backdrop-blur-md border-b border-on-surface/5 py-3' : 'bg-background py-5'}`}>
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0 text-center md:text-left">
-          <div className="flex items-center gap-3 cursor-pointer justify-center md:justify-start" onClick={() => scrollTo('home')}>
-            <BookOpen className="text-secondary w-7 h-7 md:w-8 md:h-8" />
-            <h1 className="text-lg md:text-2xl font-extrabold text-secondary tracking-tight leading-tight">The Fluid Classroom</h1>
+      <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-background/80 backdrop-blur-md border-b border-on-surface/5 py-2' : 'bg-background py-4'}`}>
+        <div className="max-w-7xl mx-auto px-5">
+          {/* Mobile row 1: logo */}
+          <div className="flex items-center justify-between md:hidden">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollTo('home')}>
+              <BookOpen className="text-secondary w-6 h-6" />
+              <h1 className="text-base font-extrabold text-secondary tracking-tight leading-tight">The Fluid Classroom</h1>
+            </div>
           </div>
 
-          <nav className="flex items-center gap-1.5 md:gap-4 justify-center md:justify-start">
-            <NavButton
-              active={activeSection === 'home'}
-              onClick={() => scrollTo('home')}
-              icon={<Home size={20} />}
-              label="Home"
-            />
-            <NavButton
-              active={activeSection === 'lessons'}
-              onClick={() => scrollTo('lessons')}
-              icon={<BookOpen size={20} />}
-              label="Lessons"
-            />
-            <NavButton
-              active={activeSection === 'about'}
-              onClick={() => scrollTo('about')}
-              icon={<Info size={20} />}
-              label="About Us"
-            />
-          </nav>
+          {/* Mobile row 2: nav centered */}
+          <div className="flex justify-center mt-2.5 md:hidden">
+            <nav className="flex items-center gap-1.5">
+              <NavButton active={activeSection === 'home'} onClick={() => scrollTo('home')} icon={<Home size={18} />} label="Home" />
+              <NavButton active={activeSection === 'lessons'} onClick={() => scrollTo('lessons')} icon={<BookOpen size={18} />} label="Lessons" />
+              <NavButton active={activeSection === 'about'} onClick={() => scrollTo('about')} icon={<Info size={18} />} label="About Us" />
+            </nav>
+          </div>
 
-          <button className="hidden md:block bg-secondary text-white px-6 py-2 rounded-full font-bold hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20">
-            Sign In
-          </button>
+          {/* Desktop: single row */}
+          <div className="hidden md:flex items-center justify-between">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => scrollTo('home')}>
+              <BookOpen className="text-secondary w-8 h-8" />
+              <h1 className="text-2xl font-extrabold text-secondary tracking-tight leading-tight">The Fluid Classroom</h1>
+            </div>
+
+            <nav className="flex items-center gap-4">
+              <NavButton active={activeSection === 'home'} onClick={() => scrollTo('home')} icon={<Home size={20} />} label="Home" />
+              <NavButton active={activeSection === 'lessons'} onClick={() => scrollTo('lessons')} icon={<BookOpen size={20} />} label="Lessons" />
+              <NavButton active={activeSection === 'about'} onClick={() => scrollTo('about')} icon={<Info size={20} />} label="About Us" />
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -382,43 +430,22 @@ export default function App() {
         <section ref={lessonsRef} className="max-w-7xl mx-auto px-6 py-20">
           <div className="flex justify-between items-end mb-12">
             <div>
-              <h3 className="text-4xl font-extrabold text-on-surface mb-3">Choose Your Channel</h3>
+              <h3 className="text-4xl font-extrabold text-on-surface mb-3">Choose Your Topic</h3>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <PlatformCard
-              icon={<PlayCircle className="text-[#FF0000]" size={24} />}
-              iconBg="bg-red-50"
-              title="YouTube"
-              description="Deep dives into complex syntax with cinematic visuals."
-              lessons={`${getMergedLessons('YouTube').length} Lessons`}
-              onClick={() => setSelectedPlatform('YouTube')}
-            />
-            <PlatformCard
-              icon={<Zap className="text-on-surface" size={24} />}
-              iconBg="bg-surface-container-low"
-              title="TikTok"
-              description="15-second rules and grammar hacks for the fast lane."
-              lessons={`${getMergedLessons('TikTok').length} Lessons`}
-              onClick={() => setSelectedPlatform('TikTok')}
-            />
-            <PlatformCard
-              icon={<Instagram className="text-white" size={24} />}
-              iconBg="bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]"
-              title="Instagram"
-              description="Visual carousels and beautiful typography for visual learners."
-              lessons={`${getMergedLessons('Instagram').length} Lessons`}
-              onClick={() => setSelectedPlatform('Instagram')}
-            />
-            <PlatformCard
-              icon={<Users className="text-secondary" size={24} />}
-              iconBg="bg-blue-50"
-              title="Facebook"
-              description="Community-led discussions and long-form grammar storytelling."
-              lessons={`${getMergedLessons('Facebook').length} Lessons`}
-              onClick={() => setSelectedPlatform('Facebook')}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {TOPICS.map((t) => (
+              <TopicCard
+                key={t.id}
+                icon={t.icon}
+                iconBg={t.bg}
+                title={t.title}
+                description={t.desc}
+                lessons={`${getMergedLessons(t.id).length} Lessons`}
+                onClick={() => setSelectedTopic(t.id)}
+              />
+            ))}
           </div>
         </section>
 
@@ -623,33 +650,22 @@ export default function App() {
   );
 }
 
-function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platform: Platform, lessons: Lesson[], hasQuizIds: Set<string>, onBack: () => void, onNav: (s: Section) => void, activeSection: Section }) {
+
+function PlatformLessonsView({ topic, lessons, hasQuizIds, onBack, initialLessonId }: { topic: string, lessons: Lesson[], hasQuizIds: Set<string>, onBack: () => void, initialLessonId?: string | null }) {
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [quizLesson, setQuizLesson] = useState<Lesson | null>(null);
   const [direction, setDirection] = useState<number>(0);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'az' | 'za' | 'newest' | 'oldest'>('newest');
-  const [showFilters, setShowFilters] = useState(false);
   const touchStartY = useRef<number>(0);
 
-  // Filter and sort the lessons
-  const filteredLessons = lessons.filter(lesson =>
-    lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    lesson.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    lesson.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Use the full lessons list, the profiling is handled in the Grid view
+  const sortedLessons = lessons;
 
-  const sortedLessons = [...filteredLessons].sort((a, b) => {
-    if (sortBy === 'az') return a.title.localeCompare(b.title);
-    if (sortBy === 'za') return b.title.localeCompare(a.title);
-    if (sortBy === 'newest') {
-      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  useEffect(() => {
+    if (initialLessonId) {
+      const idx = sortedLessons.findIndex(l => l.id === initialLessonId);
+      if (idx !== -1) setCurrentIdx(idx);
     }
-    if (sortBy === 'oldest') {
-      return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-    }
-    return 0;
-  });
+  }, [initialLessonId, sortedLessons]);
 
   const lesson = sortedLessons[currentIdx] ?? null;
 
@@ -714,8 +730,8 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platfo
   };
 
   const isVertical =
-    platform === 'TikTok' ||
-    platform === 'Instagram' ||
+    lesson?.platform === 'TikTok' ||
+    lesson?.platform === 'Instagram' ||
     lesson?.videoUrl?.includes('/shorts/');
 
   const embedUrl = getEmbedUrl(lesson?.videoUrl);
@@ -740,7 +756,7 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platfo
         <MonitorPlay size={64} className="opacity-20 mb-4" />
         <h3 className="text-2xl font-black mb-2">No Lessons Yet</h3>
         <p className="text-white/50 text-center max-w-xs px-6">
-          No {platform} lessons uploaded yet. Check back soon!
+          No lessons uploaded for this topic yet. Check back soon!
         </p>
         <button
           onClick={onBack}
@@ -754,19 +770,19 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platfo
 
   return (
     <div
-      className="fixed inset-0 bg-black z-50 overflow-hidden select-none"
+      className="fixed inset-0 bg-black z-50 overflow-hidden select-none touch-none overscroll-none"
     >
       {/* ── Mobile Swipe Edge Zones ── */}
       {/* Left zone */}
-      <div 
-        className="absolute left-0 top-0 bottom-0 w-16 z-40" 
-        onTouchStart={handleTouchStart} 
+      <div
+        className="absolute left-0 top-0 bottom-0 w-16 z-40"
+        onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       />
       {/* Right zone (excludes action bar area) */}
-      <div 
-        className="absolute right-20 top-0 bottom-0 w-16 z-40" 
-        onTouchStart={handleTouchStart} 
+      <div
+        className="absolute right-20 top-0 bottom-0 w-16 z-40"
+        onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       />
 
@@ -815,10 +831,10 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platfo
                 />
               )
             ) : (
-                <div className="flex flex-col items-center gap-4 text-white/20">
-                    <Search size={64} />
-                    <p className="text-lg font-bold">No matching lessons</p>
-                </div>
+              <div className="flex flex-col items-center gap-4 text-white/20">
+                <Search size={64} />
+                <p className="text-lg font-bold">No matching lessons</p>
+              </div>
             )}
           </div>
 
@@ -836,25 +852,27 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platfo
               <div className="flex flex-col gap-2 max-w-lg">
                 <div className="flex items-center gap-2 pointer-events-auto">
                   <span className="text-white font-black text-sm tracking-tight">
-                    @{platform.toLowerCase()}_grammar
+                    @{lesson.platform?.toLowerCase() || 'grammar'}
                   </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase text-white shadow-sm ${PLATFORM_BADGE[platform]}`}>
-                    {platform}
-                  </span>
+                  {lesson.platform && (
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase text-white shadow-sm ${PLATFORM_BADGE[lesson.platform]}`}>
+                      {lesson.platform}
+                    </span>
+                  )}
                 </div>
-                
+
                 <h3 className="text-white font-black text-xl md:text-2xl leading-tight drop-shadow-md">
                   {lesson.title}
                 </h3>
-                
+
                 <p className="text-white/80 text-xs md:text-sm line-clamp-2 leading-relaxed font-medium">
                   {lesson.description}
                 </p>
 
-                {lesson.category && (
+                {lesson.topic && (
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-secondary font-black text-[10px] uppercase tracking-widest">
-                      #{lesson.category.replace(/\s+/g, '')}
+                      #{lesson.topic.replace(/\s+/g, '')}
                     </span>
                     {lesson.duration && (
                       <span className="bg-white/10 backdrop-blur-md px-2 py-0.5 rounded text-[9px] text-white/60 font-bold">
@@ -881,8 +899,18 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platfo
                 active={hasQuizIds.has(lesson.id)}
                 onClick={() => setQuizLesson(lesson)}
               />
-              <FeedActionButton icon={<Bookmark size={24} />} label="Save" />
-              <FeedActionButton icon={<Share2 size={24} />} label="Share" />
+              <FeedActionButton
+                icon={<ChevronUp size={28} />}
+                label="Prev"
+                onClick={() => navigate(currentIdx - 1)}
+                disabled={currentIdx === 0}
+              />
+              <FeedActionButton
+                icon={<ChevronDown size={28} />}
+                label="Next"
+                onClick={() => navigate(currentIdx + 1)}
+                disabled={currentIdx === sortedLessons.length - 1}
+              />
             </motion.div>
           )}
         </motion.div>
@@ -891,110 +919,32 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platfo
       {/* ── Fixed UI (does not animate with slides) ── */}
 
       {/* Top Header */}
-      <div className="absolute top-0 inset-x-0 z-30 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+      <div className="absolute top-0 inset-x-0 z-[60] bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
         <div className="flex items-center justify-between px-5 pt-4 pb-12 pointer-events-auto">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={onBack}
-            className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/30 transition-colors"
+            onClick={() => {
+              console.log('Feed Back Clicked');
+              onBack();
+            }}
+            className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/30 transition-colors pointer-events-auto shadow-xl"
           >
             <ArrowLeft size={20} />
           </motion.button>
 
           <div className="text-center">
-            <p className="text-white font-black text-base tracking-wide uppercase tracking-widest">{platform}</p>
-            <p className="text-white/40 text-[10px] font-medium uppercase mt-0.5">
+            <p className="text-white font-black text-base tracking-wide uppercase tracking-widest leading-none mb-1">{topic}</p>
+            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
               {sortedLessons.length > 0 ? `${currentIdx + 1} / ${sortedLessons.length}` : '0 / 0'}
             </p>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShowFilters(!showFilters)}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${showFilters ? 'bg-secondary text-white' : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/30'}`}
-          >
-            <Search size={20} />
-          </motion.button>
+          <div className="w-10" />
         </div>
-
-        {/* Search / Sort Overlay */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="px-5 pb-6 pointer-events-auto max-w-md mx-auto"
-            >
-              <div className="bg-white/10 backdrop-blur-xl rounded-[2rem] p-4 border border-white/10 shadow-2xl space-y-4">
-                <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-secondary transition-colors" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search lessons..."
-                        value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentIdx(0); }}
-                        className="w-full bg-white/5 border-none rounded-2xl py-3 pl-12 pr-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-secondary/50 transition-all text-sm"
-                    />
-                </div>
-                <div className="flex gap-2">
-                    {[
-                        { id: 'newest', label: 'Newest' },
-                        { id: 'az', label: 'Title' }
-                    ].map(opt => (
-                        <button
-                            key={opt.id}
-                            onClick={() => { setSortBy(opt.id as any); setCurrentIdx(0); }}
-                            className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${sortBy === opt.id ? 'bg-secondary text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-                        >
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
-      {/* Desktop Prev/Next arrows */}
-      <div className="hidden md:flex absolute bottom-6 left-1/2 -translate-x-1/2 z-30 items-center gap-4">
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => navigate(currentIdx - 1)}
-          disabled={currentIdx === 0}
-          className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md text-white flex items-center justify-center disabled:opacity-25 hover:bg-white/25 transition-colors"
-        >
-          <ChevronLeft size={22} />
-        </motion.button>
-        <span className="text-white/30 text-[10px] font-bold tracking-widest uppercase">
-          ↑ ↓ Arrow Keys
-        </span>
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => navigate(currentIdx + 1)}
-          disabled={currentIdx === sortedLessons.length - 1}
-          className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md text-white flex items-center justify-center disabled:opacity-25 hover:bg-white/25 transition-colors"
-        >
-          <ChevronRight size={22} />
-        </motion.button>
-      </div>
 
-      {/* Mobile swipe hint */}
-      <div className="md:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-        {currentIdx < sortedLessons.length - 1 && (
-          <motion.div
-            animate={{ y: [0, 7, 0] }}
-            transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
-            className="flex flex-col items-center gap-0.5"
-          >
-            <div className="w-6 h-0.5 bg-white/35 rounded-full" />
-            <div className="w-4 h-0.5 bg-white/20 rounded-full" />
-          </motion.div>
-        )}
-      </div>
 
       {/* Progress sidebar dots */}
       {sortedLessons.length > 1 && sortedLessons.length <= 40 && (
@@ -1004,11 +954,10 @@ function PlatformLessonsView({ platform, lessons, hasQuizIds, onBack }: { platfo
               key={i}
               onClick={() => navigate(i)}
               aria-label={`Go to lesson ${i + 1}`}
-              className={`rounded-full transition-all duration-300 ${
-                i === currentIdx
-                  ? 'w-1.5 h-6 bg-white'
-                  : 'w-1 h-1.5 bg-white/25 hover:bg-white/50'
-              }`}
+              className={`rounded-full transition-all duration-300 ${i === currentIdx
+                ? 'w-1.5 h-6 bg-white'
+                : 'w-1 h-1.5 bg-white/25 hover:bg-white/50'
+                }`}
             />
           ))}
         </div>
@@ -1032,26 +981,27 @@ function FeedActionButton({
   icon,
   label,
   active = false,
+  disabled = false,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
   active?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
 }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.85 }}
-      onClick={onClick}
-      className="flex flex-col items-center gap-1.5"
+      whileHover={!disabled ? { scale: 1.1 } : {}}
+      whileTap={!disabled ? { scale: 0.85 } : {}}
+      onClick={!disabled ? onClick : undefined}
+      className={`flex flex-col items-center gap-1.5 ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
       <div
-        className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${
-          active
-            ? 'bg-amber-400 text-amber-900 shadow-xl shadow-amber-400/40'
-            : 'bg-white/20 text-white hover:bg-white/30'
-        }`}
+        className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${active
+          ? 'bg-amber-400 text-amber-900 shadow-xl shadow-amber-400/40'
+          : 'bg-white/20 text-white hover:bg-white/30'
+          }`}
       >
         {icon}
       </div>
@@ -1136,430 +1086,6 @@ function TeamCard({ image, name, role, bio }: { image: string, name: string, rol
       <p className="text-on-surface-variant text-sm leading-relaxed">
         {bio}
       </p>
-    </div>
-  );
-}
-
-// --- Creator Components ---
-
-function CreatorLogin({ onLogin }: { onLogin: () => void }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (username === 'admin' && password === 'creator123') {
-      onLogin();
-    } else {
-      setError('Invalid credentials. Try admin / creator123');
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-container-low p-6">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-on-surface/5"
-      >
-        <div className="flex flex-col items-center mb-10">
-          <div className="w-16 h-16 bg-secondary/10 rounded-2xl flex items-center justify-center mb-4">
-            <Zap className="text-secondary" size={32} />
-          </div>
-          <h2 className="text-3xl font-extrabold text-on-surface">Creator Hub</h2>
-          <p className="text-on-surface-variant text-sm mt-2">Sign in to manage your lessons</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-on-surface mb-2 ml-1">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
-              placeholder="admin"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-on-surface mb-2 ml-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
-              placeholder="••••••••"
-            />
-          </div>
-          {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
-          <button
-            type="submit"
-            className="w-full bg-secondary text-white py-4 rounded-2xl font-bold hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20"
-          >
-            Enter Dashboard
-          </button>
-        </form>
-      </motion.div>
-    </div>
-  );
-}
-
-// Extracts a thumbnail URL from a given video URL
-function getThumbnailFromUrl(url: string): string | null {
-  if (!url) return null;
-
-  // YouTube
-  if (url.includes('youtube.com') || url.includes('youtu.be')) {
-    // Shorts
-    if (url.includes('/shorts/')) {
-      const videoId = url.split('/shorts/')[1]?.split(/[?#]/)[0];
-      if (videoId) return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-    }
-    // Standard watch URL
-    const match = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
-    if (match) return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
-  }
-
-  return null;
-}
-
-function CreatorDashboard({ lessons, onSave, onDelete, hasQuizIds, onQuizSaved, onLogout }: { lessons: Lesson[], onSave: (l: Lesson[]) => void, onDelete: (id: string) => void, hasQuizIds: Set<string>, onQuizSaved: () => void, onLogout: () => void }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [quizLessonId, setQuizLessonId] = useState<{ id: string; title: string } | null>(null);
-  const [formData, setFormData] = useState<Partial<Lesson>>({
-    title: '',
-    description: '',
-    platform: 'YouTube',
-    category: 'Grammar',
-    thumbnail: '',
-    videoUrl: ''
-  });
-
-  const handleVideoUrlChange = async (url: string) => {
-    const autoThumb = getThumbnailFromUrl(url);
-    setFormData(prev => ({
-      ...prev,
-      videoUrl: url,
-      // Only auto-fill if user hasn't manually set a thumbnail
-      thumbnail: autoThumb || prev.thumbnail || ''
-    }));
-
-    // For TikTok, fetch from oEmbed API
-    if (url.includes('tiktok.com') && url.length > 20) {
-      try {
-        const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.thumbnail_url) {
-            setFormData(prev => ({ ...prev, thumbnail: data.thumbnail_url }));
-          }
-        }
-      } catch (e) {
-        console.warn('TikTok thumbnail fetch failed:', e);
-      }
-    }
-  };
-
-  // Resolve the active thumbnail to show in the preview
-  const previewThumbnail = formData.thumbnail ||
-    getThumbnailFromUrl(formData.videoUrl || '') ||
-    null;
-
-  const handleAdd = () => {
-    const autoThumb = getThumbnailFromUrl(formData.videoUrl || '');
-
-    // Find the original lesson if editing to preserve metadata (like created_at)
-    const existingLesson = editingId ? lessons.find(l => l.id === editingId) : {};
-
-    const newLesson: Lesson = {
-      ...existingLesson, // Preserve all hidden metadata fields from Supabase
-      id: editingId || (Date.now().toString() + Math.random().toString(36).substring(2, 9)),
-      title: formData.title || 'Untitled Lesson',
-      description: formData.description || '',
-      platform: (formData.platform as Platform) || 'YouTube',
-      category: formData.category || 'General',
-      thumbnail: formData.thumbnail || autoThumb || `https://picsum.photos/seed/${Date.now()}/1200/600`,
-      videoUrl: formData.videoUrl || '',
-      tag: (existingLesson as any)?.tag || 'NEW',
-      created_at: (existingLesson as any)?.created_at || new Date().toISOString()
-    };
-
-    if (editingId) {
-      onSave(lessons.map(l => l.id === editingId ? newLesson : l));
-    } else {
-      onSave([newLesson, ...lessons]);
-    }
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setFormData({ title: '', description: '', platform: 'YouTube', category: 'Grammar', thumbnail: '', videoUrl: '' });
-    setIsAdding(false);
-    setEditingId(null);
-  };
-
-  const startEdit = (lesson: Lesson) => {
-    setFormData(lesson);
-    setEditingId(lesson.id);
-    setIsAdding(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this lesson?')) {
-      onDelete(id);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-surface-container-low flex flex-col">
-      <header className="bg-white border-b border-on-surface/5 py-4 px-8 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <BookOpen className="text-secondary w-8 h-8" />
-          <h1 className="text-xl font-extrabold text-on-surface tracking-tight">Creator Dashboard</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsAdding(true)}
-            className="bg-secondary text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20"
-          >
-            <Plus size={18} />
-            Add Content
-          </button>
-          <button
-            onClick={onLogout}
-            className="text-on-surface-variant hover:text-red-500 transition-colors p-2"
-            title="Logout"
-          >
-            <LogOut size={20} />
-          </button>
-        </div>
-      </header>
-
-      <main className="flex-grow p-8 max-w-6xl mx-auto w-full">
-        <div className="mb-10">
-          <h2 className="text-3xl font-black text-on-surface mb-2">My Content</h2>
-          <p className="text-on-surface-variant">Manage your fluid grammar lessons across all platforms.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence>
-            {lessons.map((lesson, idx) => (
-              <motion.div
-                key={lesson.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-3xl overflow-hidden shadow-xl border border-on-surface/5 group"
-              >
-                <div className="aspect-video relative overflow-hidden">
-                  <LessonThumbnail
-                    lesson={lesson}
-                    index={lessons.length - idx - 1} // Numbering based on total count
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-4 left-4 bg-secondary text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
-                    {lesson.platform}
-                  </div>
-
-                  {/* Status Badge */}
-                  <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 ${hasQuizIds.has(lesson.id)
-                    ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20'
-                    : 'bg-black/40 backdrop-blur-md text-white/50'
-                    }`}>
-                    <Zap size={10} fill={hasQuizIds.has(lesson.id) ? "currentColor" : "none"} />
-                    {hasQuizIds.has(lesson.id) ? 'Active' : 'Missing Quiz'}
-                  </div>
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-on-surface mb-2 line-clamp-1">{lesson.title}</h3>
-                  <p className="text-on-surface-variant text-sm mb-6 line-clamp-2">{lesson.description}</p>
-                  <div className="flex justify-between items-center pt-4 border-t border-on-surface/5">
-                    <span className="text-xs font-bold text-secondary uppercase tracking-widest">{lesson.category}</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setQuizLessonId({ id: lesson.id, title: lesson.title })}
-                        className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-tertiary-container hover:text-on-tertiary-container transition-all"
-                        title="Edit Quiz"
-                      >
-                        <Zap size={16} />
-                      </button>
-                      <button
-                        onClick={() => startEdit(lesson)}
-                        className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-secondary hover:text-white transition-all"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(lesson.id)}
-                        className="p-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-red-500 hover:text-white transition-all"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {lessons.length === 0 && !isAdding && (
-            <div className="col-span-full py-20 flex flex-col items-center justify-center text-on-surface-variant opacity-50">
-              <PlayCircle size={64} className="mb-4" />
-              <p className="text-xl font-bold">No content yet. Click "Add Content" to start.</p>
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Add/Edit Modal */}
-      <AnimatePresence>
-        {isAdding && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={resetForm}
-              className="absolute inset-0 bg-on-surface/20 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 50, scale: 0.9 }}
-              className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              <div className="p-8 border-b border-on-surface/5 flex justify-between items-center">
-                <h3 className="text-2xl font-black text-on-surface">{editingId ? 'Edit Lesson' : 'Add New Lesson'}</h3>
-                <button onClick={resetForm} className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="p-8 overflow-y-auto space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-bold text-on-surface mb-2">Lesson Title</label>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
-                      placeholder="e.g. Mastering the Present Perfect"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-on-surface mb-2">Platform</label>
-                    <select
-                      value={formData.platform}
-                      onChange={(e) => setFormData({ ...formData, platform: e.target.value as Platform })}
-                      className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all appearance-none"
-                    >
-                      <option value="YouTube">YouTube</option>
-                      <option value="TikTok">TikTok</option>
-                      <option value="Instagram">Instagram</option>
-                      <option value="Facebook">Facebook</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-on-surface mb-2">Category</label>
-                    <input
-                      type="text"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
-                      placeholder="e.g. Grammar, Vocabulary"
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="block text-sm font-bold text-on-surface mb-2">Description</label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all h-32 resize-none"
-                      placeholder="Describe the lesson content..."
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="block text-sm font-bold text-on-surface mb-2">Video Link / Embed URL</label>
-                    <div className="flex gap-3">
-                      <div className="flex-grow relative">
-                        <LinkIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-on-surface-variant" size={18} />
-                        <input
-                          type="text"
-                          value={formData.videoUrl}
-                          onChange={(e) => handleVideoUrlChange(e.target.value)}
-                          className="w-full bg-surface-container-low border-none rounded-2xl py-4 pl-14 pr-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
-                          placeholder="https://youtube.com/..."
-                        />
-                      </div>
-                    </div>
-                    {/* Live Thumbnail Preview */}
-                    {previewThumbnail ? (
-                      <div className="mt-4 relative rounded-2xl overflow-hidden aspect-video bg-surface-container-low">
-                        <img
-                          src={previewThumbnail}
-                          alt="Thumbnail preview"
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                        <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded-full">PREVIEW</div>
-                      </div>
-                    ) : (
-                      <p className="text-[10px] text-on-surface-variant mt-2 ml-2 italic">Paste a YouTube URL to auto-generate the thumbnail.</p>
-                    )}
-                  </div>
-
-                  {/* Manual thumbnail override */}
-                  <div className="col-span-2">
-                    <label className="block text-sm font-bold text-on-surface mb-2">Custom Thumbnail URL <span className="font-normal text-on-surface-variant">(optional override)</span></label>
-                    <input
-                      type="text"
-                      value={formData.thumbnail}
-                      onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                      className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
-                      placeholder="https://example.com/image.jpg"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-8 border-t border-on-surface/5 flex gap-4">
-                <button
-                  onClick={resetForm}
-                  className="flex-1 bg-surface-container-low text-on-surface-variant py-4 rounded-2xl font-bold hover:bg-on-surface/5 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAdd}
-                  className="flex-1 bg-secondary text-white py-4 rounded-2xl font-bold hover:bg-secondary-dim transition-all shadow-lg shadow-secondary/20 flex items-center justify-center gap-2"
-                >
-                  <Save size={20} />
-                  {editingId ? 'Update Lesson' : 'Publish Lesson'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Quiz Builder */}
-      <AnimatePresence>
-        {quizLessonId && (
-          <QuizBuilder
-            lessonId={quizLessonId.id}
-            lessonTitle={quizLessonId.title}
-            onClose={() => { setQuizLessonId(null); onQuizSaved(); }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
