@@ -353,7 +353,7 @@ export default function App() {
           <div className="flex items-center justify-center md:hidden">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollTo('home')}>
               <BookOpen className="text-secondary w-6 h-6" />
-              <h1 className="text-base font-extrabold text-secondary tracking-tight leading-tight">The Fluid Classroom</h1>
+              <h1 className="text-base font-extrabold text-secondary tracking-tight leading-tight">Quintessen Grammar</h1>
             </div>
           </div>
 
@@ -370,7 +370,7 @@ export default function App() {
           <div className="hidden md:flex items-center justify-between">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => scrollTo('home')}>
               <BookOpen className="text-secondary w-8 h-8" />
-              <h1 className="text-2xl font-extrabold text-secondary tracking-tight leading-tight">The Fluid Classroom</h1>
+              <h1 className="text-2xl font-extrabold text-secondary tracking-tight leading-tight">Quintessen Grammar</h1>
             </div>
 
             <nav className="flex items-center gap-4">
@@ -393,11 +393,11 @@ export default function App() {
               className="lg:col-span-7"
             >
               <h2 className="text-5xl md:text-7xl font-extrabold text-on-surface leading-[1.1] mb-8">
-                Grammar <br />
-                <span className="text-secondary">Reels</span>.
+                The Grammar <br />
+                <span className="text-secondary">Loop</span>
               </h2>
               <p className="text-xl text-on-surface-variant max-w-xl mb-10 leading-relaxed">
-                Static textbooks are a thing of the past. Explore our curated collections of bite-sized grammar lessons across your favorite social platforms.
+                To deliver bite-sized, high-impact grammar hacks that help creators and professionals master the English language in 60 seconds or less.
               </p>
               <div className="flex flex-wrap gap-4">
                 <span className="bg-tertiary-container text-on-tertiary-container px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm">
@@ -463,66 +463,61 @@ export default function App() {
         <section ref={aboutRef} className="max-w-7xl mx-auto px-6 py-20">
           <div className="mb-16">
             <h3 className="text-4xl font-extrabold text-on-surface mb-4">Our Mission</h3>
-            <p className="text-on-surface-variant text-xl">Breaking rigid constraints to foster intuitive linguistic growth.</p>
+            <p className="text-on-surface-variant text-xl"></p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-24">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-24">
             <MissionCard
               icon={<Lightbulb className="text-secondary" size={24} />}
-              title="Clarity"
-              description="Removing the noise of traditional LMS to provide crystal-clear pathways through complex grammar rules."
+              title="Mission"
+              description="To deliver bite-sized, high-impact grammar insights that empower creators and professionals to write with clarity, confidence, and precision. We aim to simplify complex grammar rules, provide practical writing strategies, and make language learning accessible, engaging, and useful for everyday communication."
             />
             <MissionCard
               icon={<GraduationCap className="text-secondary" size={24} />}
               title="Learning"
-              description="An adaptive ecosystem that evolves with your unique pace, turning friction into flow."
+              description="To become a trusted and go-to platform for modern grammar learning, where individuals continuously improve their writing skills through simple, effective, and engaging content."
             />
-            <MissionCard
-              icon={<TrendingUp className="text-secondary" size={24} />}
-              title="Progress"
-              description="Visualizing growth through tactile, friendly indicators that celebrate every win."
-              className="lg:row-span-1"
-            />
-            <div className="md:col-span-2 lg:col-span-2 bg-secondary text-white rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
-              <div className="relative z-10 flex-1">
-                <h4 className="text-3xl font-bold mb-4">Empowerment</h4>
-                <p className="text-lg opacity-90 leading-relaxed">
-                  Equipping learners with the confidence to communicate naturally, not just correctly. Mastery is the destination; confidence is the journey.
-                </p>
-              </div>
-              <div className="relative z-10 w-full md:w-1/3 aspect-video rounded-2xl overflow-hidden shadow-2xl">
-                <img
-                  src="https://picsum.photos/seed/empower/600/400"
-                  alt="Empowerment"
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="text-center mb-16">
             <h3 className="text-4xl font-extrabold text-on-surface">Meet the Visionaries</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
             <TeamCard
               image="https://picsum.photos/seed/elena/600/800"
-              name="Dr. Elena Vance"
-              role="FOUNDER & CHIEF LINGUIST"
+              name="Antiquera, Shane M. "
+              role="BSED ENGLISH III
+Researcher"
               bio="A PhD in Cognitive Linguistics with 15 years of experience bridging the gap between brain science and language acquisition."
             />
             <TeamCard
               image="https://picsum.photos/seed/marcus/600/800"
-              name="Marcus Chen"
-              role="CREATIVE DIRECTOR"
+              name="Bayani, Catherine M. "
+              role="BSED ENGLISH III
+Researcher"
               bio="The architect behind 'The Fluid Classroom.' Marcus ensures every pixel serves the learner's journey and mental momentum."
             />
             <TeamCard
               image="https://picsum.photos/seed/sarah/600/800"
-              name="Sarah Jamil"
-              role="HEAD OF EXPERIENCE"
+              name="Belgado, Cyrel Ann M."
+              role="BSED ENGLISH III
+Researcher"
               bio="Dedicated to human-centric design, Sarah ensures GrammarFlow remains the most approachable learning tool in the market."
+            />
+            <TeamCard
+              image="https://picsum.photos/seed/anya/600/800"
+              name="Campita, Charlene C."
+              role="BSED ENGLISH III
+Researcher"
+              bio="A full-stack wizard who transformed traditional learning logic into the smooth, interactive GrammarLoop experience."
+            />
+            <TeamCard
+              image="https://picsum.photos/seed/david/600/800"
+              name="Sidro, Dawn Yve A."
+              role="BSED ENGLISH III
+Researcher"
+              bio="Scaling our mission to reach every corner of the globe, David ensures Quintessenen remains at the forefront of EdTech."
             />
           </div>
         </section>
@@ -535,10 +530,10 @@ export default function App() {
             <div className="md:col-span-5">
               <div className="flex items-center gap-3 mb-6">
                 <BookOpen className="text-secondary w-8 h-8" />
-                <h4 className="text-2xl font-extrabold text-secondary tracking-tight">The Fluid Classroom</h4>
+                <h4 className="text-2xl font-extrabold text-secondary tracking-tight">Quintessen Grammar</h4>
               </div>
               <p className="text-on-surface-variant text-lg leading-relaxed max-w-md">
-                A new way of learning English through the platforms you already use every day. Simple, modern, and fluid. We believe education should meet you where you are.
+                To deliver bite-sized, high-impact grammar hacks that help creators and professionals master the English language in 60 seconds or less.
               </p>
             </div>
 
@@ -572,7 +567,7 @@ export default function App() {
           </div>
 
           <div className="pt-8 border-t border-on-surface/5 text-center text-on-surface-variant text-sm">
-            <p>© {new Date().getFullYear()} The Fluid Classroom. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Quintessenen Grammar . All rights reserved.</p>
           </div>
         </div>
       </footer>
@@ -724,8 +719,8 @@ function PlatformLessonsView({ topic, lessons, hasQuizIds, onBack, initialLesson
 
   const embedUrl = getEmbedUrl(lesson?.videoUrl);
   const isVertical = lesson?.platform === 'TikTok' ||
-                     lesson?.platform === 'Instagram' ||
-                     lesson?.videoUrl?.includes('/shorts/');
+    lesson?.platform === 'Instagram' ||
+    lesson?.videoUrl?.includes('/shorts/');
 
   const slideVariants = {
     enter: (dir: number) => ({ y: dir > 0 ? '100%' : '-100%', opacity: 0 }),
@@ -1077,7 +1072,7 @@ function TeamCard({ image, name, role, bio }: { image: string, name: string, rol
       <div className="aspect-[3/4] rounded-3xl overflow-hidden mb-6 shadow-2xl">
         <img src={image} alt={name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
       </div>
-      <h4 className="text-2xl font-bold text-on-surface mb-1">{name}</h4>
+      <h4 className="text-lg font-bold text-on-surface mb-1">{name}</h4>
       <span className="text-secondary font-bold text-xs tracking-widest mb-4">{role}</span>
       <p className="text-on-surface-variant text-sm leading-relaxed">
         {bio}
