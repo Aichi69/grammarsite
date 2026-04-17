@@ -283,11 +283,52 @@ interface QuizPlayerProps {
 export function QuizPlayer({ lessonId, lessonTitle, onClose }: QuizPlayerProps) {
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [loading, setLoading] = useState(true);
+    const [score, setScore] = useState(0);
+    const [isFinished, setIsFinished] = useState(false);
+
+    useEffect(() => {
+        const stored = localStorage.getItem('completed_quizzes_data');
+        if (stored) {
+            try {
+                const data = JSON.parse(stored);
+                if (data[lessonId]) {
+                    setScore(data[lessonId].score);
+                    setIsFinished(true);
+                }
+            } catch (e) { console.error(e); }
+        }
+    }, [lessonId]);
+
     const [currentQ, setCurrentQ] = useState(0);
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
     const [isRevealed, setIsRevealed] = useState(false);
-    const [score, setScore] = useState(0);
-    const [isFinished, setIsFinished] = useState(false);
+
+    useEffect(() => {
+        if (isFinished && quiz) {
+            const percentage = Math.round((score / quiz.questions.length) * 100);
+            if (percentage >= 70) {
+                const stored = localStorage.getItem('completed_quizzes_data');
+                const completed = stored ? JSON.parse(stored) : {};
+                completed[lessonId] = {
+                    score,
+                    total: quiz.questions.length,
+                    percentage,
+                    date: new Date().toISOString()
+                };
+                localStorage.setItem('completed_quizzes_data', JSON.stringify(completed));
+                
+                // Legacy support for the simple boolean check
+                const simpleStored = localStorage.getItem('completed_quizzes');
+                const simpleList: string[] = simpleStored ? JSON.parse(simpleStored) : [];
+                if (!simpleList.includes(lessonId)) {
+                    localStorage.setItem('completed_quizzes', JSON.stringify([...simpleList, lessonId]));
+                }
+
+                // Global notification for same-window updates
+                window.dispatchEvent(new Event('completed_quizzes_updated'));
+            }
+        }
+    }, [isFinished, score, quiz, lessonId]);
 
     useEffect(() => {
         const fetchQuiz = async () => {

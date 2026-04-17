@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     ArrowLeft,
@@ -12,8 +12,11 @@ import {
     ChevronDown,
     ChevronRight,
     Layout,
+    Filter,
+    ArrowUpDown,
     PenTool,
     AlertCircle,
+    CheckCircle,
     Mic
 } from 'lucide-react';
 import { QuizPlayer } from './Quiz';
@@ -111,6 +114,7 @@ interface SubTopicSectionProps {
     activeTab: 'lessons' | 'quizzes';
     onStartQuiz: (lesson: Lesson) => void;
     defaultOpen: boolean;
+    completedIds: Set<string>;
 }
 
 const SubTopicSection: React.FC<SubTopicSectionProps> = ({
@@ -121,6 +125,7 @@ const SubTopicSection: React.FC<SubTopicSectionProps> = ({
     activeTab,
     onStartQuiz,
     defaultOpen,
+    completedIds,
 }) => {
     const [open, setOpen] = useState(defaultOpen);
 
@@ -194,9 +199,14 @@ const SubTopicSection: React.FC<SubTopicSectionProps> = ({
 
                                     {/* Text */}
                                     <div className="flex-grow min-w-0">
-                                        <p className="text-sm font-semibold text-on-surface group-hover:text-secondary transition-colors line-clamp-1 leading-snug">
-                                            {lesson.title}
-                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-semibold text-on-surface group-hover:text-secondary transition-colors line-clamp-1 leading-snug">
+                                                {lesson.title}
+                                            </p>
+                                            {completedIds.has(lesson.id) && (
+                                                <CheckCircle size={14} className="text-green-500 shrink-0" />
+                                            )}
+                                        </div>
                                         <p className="text-xs text-on-surface-variant opacity-60 mt-0.5 line-clamp-1">
                                             {lesson.description}
                                         </p>
@@ -217,13 +227,23 @@ const SubTopicSection: React.FC<SubTopicSectionProps> = ({
 
                                     {/* Quiz tab action */}
                                     {activeTab === 'quizzes' ? (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onStartQuiz(lesson); }}
-                                            className="shrink-0 bg-secondary text-white text-xs font-black px-3 py-1.5 rounded-xl hover:bg-secondary-dim transition-all shadow-md shadow-secondary/20 flex items-center gap-1"
-                                        >
-                                            <Zap size={11} />
-                                            Start
-                                        </button>
+                                        completedIds.has(lesson.id) ? (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onStartQuiz(lesson); }}
+                                                className="shrink-0 bg-emerald-500 text-white text-xs font-black px-3 py-1.5 rounded-xl hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1"
+                                            >
+                                                <CheckCircle size={11} />
+                                                Completed
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onStartQuiz(lesson); }}
+                                                className="shrink-0 bg-secondary text-white text-xs font-black px-3 py-1.5 rounded-xl hover:bg-secondary-dim transition-all shadow-md shadow-secondary/20 flex items-center gap-1"
+                                            >
+                                                <Zap size={11} />
+                                                Start
+                                            </button>
+                                        )
                                     ) : (
                                         <ChevronRight
                                             size={16}
@@ -257,14 +277,53 @@ export default function TopicProfileView({
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'lessons' | 'quizzes'>('lessons');
     const [quizLesson, setQuizLesson] = useState<Lesson | null>(null);
+    const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+
+    // Filter Logic
+    const allSubtopics = Array.from(new Set(lessons.map(l => {
+        const t = l.subtopic || 'General';
+        return t.replace(/\b\w/g, char => char.toUpperCase());
+    }))).sort();
+    const [selectedSubtopics, setSelectedSubtopics] = useState<string[]>(allSubtopics);
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+    const [sortBy, setSortBy] = useState<'az' | 'za' | 'newest' | 'oldest'>('az');
+    const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+    useEffect(() => {
+        // Reset subtopics when lessons change
+        setSelectedSubtopics(allSubtopics);
+    }, [lessons.length]);
+
+    useEffect(() => {
+        const loadCompleted = () => {
+            const stored = localStorage.getItem('completed_quizzes');
+            if (stored) {
+                try {
+                    setCompletedIds(new Set(JSON.parse(stored)));
+                } catch (e) {
+                    console.error('Error parsing completed quizzes', e);
+                }
+            }
+        };
+        loadCompleted();
+        window.addEventListener('storage', loadCompleted);
+        window.addEventListener('completed_quizzes_updated', loadCompleted);
+        return () => {
+            window.removeEventListener('storage', loadCompleted);
+            window.removeEventListener('completed_quizzes_updated', loadCompleted);
+        };
+    }, []);
 
     // Filter by tab and search
     const visibleLessons = lessons.filter(
-        (l) =>
-            (activeTab === 'quizzes' ? hasQuizIds.has(l.id) : true) &&
-            (l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                l.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (l.subtopic || '').toLowerCase().includes(searchQuery.toLowerCase()))
+        (l) => {
+            const sub = (l.subtopic || 'General').replace(/\b\w/g, char => char.toUpperCase());
+            return (activeTab === 'quizzes' ? hasQuizIds.has(l.id) : true) &&
+                selectedSubtopics.includes(sub) &&
+                ((l.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (l.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (l.subtopic || '').toLowerCase().includes(searchQuery.toLowerCase()));
+        }
     );
 
     // Group by subtopic
@@ -277,7 +336,37 @@ export default function TopicProfileView({
         if (!grouped[t]) grouped[t] = [];
         grouped[t].push(lesson);
     }
-    const subtopics = Object.keys(grouped).sort();
+
+    // Sort the subtopic keys
+    const subtopics = Object.keys(grouped).sort((a, b) => {
+        if (sortBy === 'az') return a.localeCompare(b);
+        if (sortBy === 'za') return b.localeCompare(a);
+
+        // Date sorting: find most recent/oldest date for each group
+        const getLatest = (sub: string) => {
+            const dates = grouped[sub].map(l => l.created_at ? new Date(l.created_at).getTime() : 0);
+            return Math.max(...dates);
+        };
+        const getOldest = (sub: string) => {
+            const dates = grouped[sub].map(l => l.created_at ? new Date(l.created_at).getTime() : Infinity);
+            return Math.min(...dates);
+        };
+
+        if (sortBy === 'newest') return getLatest(b) - getLatest(a);
+        if (sortBy === 'oldest') return getLatest(a) - getLatest(b);
+        return 0;
+    });
+
+    // Also sort lessons WITHIN each group if date sorting is active
+    if (sortBy === 'newest' || sortBy === 'oldest') {
+        for (const sub of subtopics) {
+            grouped[sub].sort((a, b) => {
+                const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
+            });
+        }
+    }
 
     const quizCount = [...hasQuizIds].filter((id) => lessons.find((l) => l.id === id)).length;
 
@@ -288,7 +377,7 @@ export default function TopicProfileView({
             className="min-h-screen bg-[#f7f8fa] flex flex-col"
         >
             {/* ── Banner ─────────────────────────────────────────────────────── */}
-            <div className={`h-36 md:h-48 w-full bg-gradient-to-br ${TOPIC_COLORS[topic] || TOPIC_COLORS['General']} relative overflow-hidden`}>
+            <div className={`h-36 md:h-64 w-full bg-gradient-to-br ${TOPIC_COLORS[topic] || TOPIC_COLORS['General']} relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-black/10" />
                 <motion.button
                     whileHover={{ x: -4 }}
@@ -303,17 +392,19 @@ export default function TopicProfileView({
             </div>
 
             {/* ── Topic header ──────────────────────────────────────────────── */}
-            <div className="max-w-3xl mx-auto w-full px-5 -mt-10 relative z-10 flex items-end gap-4 mb-6">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-[1.5rem] bg-white shadow-2xl p-4 flex items-center justify-center shrink-0">
+            <div className="max-w-3xl mx-auto w-full px-5 -mt-12 md:-mt-16 relative z-10 flex flex-col md:flex-row items-center md:items-start gap-5 md:gap-8 mb-10">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2rem] bg-white shadow-2xl p-5 md:p-6 flex items-center justify-center shrink-0 border-4 border-white">
                     {TOPIC_ICONS[topic] || TOPIC_ICONS['General']}
                 </div>
-                <div className="pb-1">
-                    <h1 className="text-2xl md:text-3xl font-black text-on-surface">
+                <div className="text-center md:text-left md:pt-16">
+                    <h1 className="text-3xl md:text-5xl font-black text-on-surface leading-tight tracking-tight">
                         {topic}
                     </h1>
-                    <p className="text-sm text-on-surface-variant mt-0.5">
-                        <span className="font-semibold">{lessons.length}</span> lesson{lessons.length !== 1 ? 's' : ''}
-                    </p>
+                    <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+                        <p className="text-sm md:text-base text-on-surface-variant font-medium bg-on-surface/5 px-4 py-1.5 rounded-full">
+                            <span className="font-bold text-on-surface">{lessons.length}</span> {lessons.length === 1 ? 'lesson' : 'lessons'}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -341,16 +432,141 @@ export default function TopicProfileView({
                         ))}
                     </div>
 
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" size={14} />
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-white border border-on-surface/8 rounded-xl py-2 pl-8 pr-3 text-on-surface text-sm w-44 focus:ring-2 focus:ring-secondary/20 focus:outline-none transition-all shadow-sm"
-                        />
+                    {/* Search & Filter */}
+                    <div className="flex items-center gap-2">
+                        {/* Sort Toggle */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowSortDropdown(!showSortDropdown)}
+                                className={`p-2 rounded-xl border transition-all flex items-center gap-2 ${showSortDropdown
+                                    ? 'bg-secondary/10 border-secondary text-secondary'
+                                    : 'bg-white border-on-surface/8 text-on-surface-variant hover:border-on-surface/20'
+                                    }`}
+                                title="Sort order"
+                            >
+                                <ArrowUpDown size={18} />
+                            </button>
+
+                            {/* Sort Dropdown */}
+                            <AnimatePresence>
+                                {showSortDropdown && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-30"
+                                            onClick={() => setShowSortDropdown(false)}
+                                        />
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-on-surface/8 p-2 z-40 overflow-hidden"
+                                        >
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 mb-2 px-2 pt-1">Sort By</div>
+                                            {[
+                                                { id: 'az', label: 'Alphabetical: A-Z' },
+                                                { id: 'za', label: 'Alphabetical: Z-A' },
+                                                { id: 'newest', label: 'Newest First' },
+                                                { id: 'oldest', label: 'Oldest First' },
+                                            ].map(option => (
+                                                <button
+                                                    key={option.id}
+                                                    onClick={() => {
+                                                        setSortBy(option.id as any);
+                                                        setShowSortDropdown(false);
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors ${sortBy === option.id
+                                                        ? 'bg-secondary text-white'
+                                                        : 'text-on-surface hover:bg-on-surface/4'
+                                                        }`}
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    </>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Filter Toggle */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                className={`p-2 rounded-xl border transition-all flex items-center gap-2 ${showFilterDropdown || selectedSubtopics.length < allSubtopics.length
+                                    ? 'bg-secondary/10 border-secondary text-secondary'
+                                    : 'bg-white border-on-surface/8 text-on-surface-variant hover:border-on-surface/20'
+                                    }`}
+                                title="Filter subtopics"
+                            >
+                                <Filter size={18} />
+                                {selectedSubtopics.length < allSubtopics.length && (
+                                    <span className="text-[10px] font-bold bg-secondary text-white w-4 h-4 rounded-full flex items-center justify-center">
+                                        {selectedSubtopics.length}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Dropdown */}
+                            <AnimatePresence>
+                                {showFilterDropdown && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-30"
+                                            onClick={() => setShowFilterDropdown(false)}
+                                        />
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-on-surface/8 p-3 z-40 overflow-hidden"
+                                        >
+                                            <div className="flex items-center justify-between mb-2 px-1">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50">Subtopics</span>
+                                                <button
+                                                    onClick={() => setSelectedSubtopics(selectedSubtopics.length === allSubtopics.length ? [] : allSubtopics)}
+                                                    className="text-[10px] font-bold text-secondary hover:underline"
+                                                >
+                                                    {selectedSubtopics.length === allSubtopics.length ? 'Clear All' : 'Select All'}
+                                                </button>
+                                            </div>
+                                            <div className="space-y-1 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                                                {allSubtopics.map(sub => (
+                                                    <label
+                                                        key={sub}
+                                                        className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-on-surface/4 cursor-pointer transition-colors"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedSubtopics.includes(sub)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedSubtopics([...selectedSubtopics, sub]);
+                                                                } else {
+                                                                    setSelectedSubtopics(selectedSubtopics.filter(s => s !== sub));
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 rounded border-on-surface/20 text-secondary focus:ring-secondary/20"
+                                                        />
+                                                        <span className="text-sm font-medium text-on-surface capitalize">{sub}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" size={14} />
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="bg-white border border-on-surface/8 rounded-xl py-2 pl-8 pr-3 text-on-surface text-sm w-44 focus:ring-2 focus:ring-secondary/20 focus:outline-none transition-all shadow-sm"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -368,6 +584,7 @@ export default function TopicProfileView({
                             activeTab={activeTab}
                             onStartQuiz={(l) => setQuizLesson(l)}
                             defaultOpen={i === 0}
+                            completedIds={completedIds}
                         />
                     ))
                 ) : (

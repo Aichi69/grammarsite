@@ -30,6 +30,7 @@ import {
   Layout,
   PenTool,
   AlertCircle,
+  CheckCircle,
   Mic,
   ChevronUp,
   ChevronDown
@@ -82,6 +83,13 @@ const PLATFORM_COLORS: Record<Platform, string> = {
   TikTok: 'from-zinc-900 via-zinc-800 to-black',
   Instagram: 'from-fuchsia-600 via-pink-600 to-orange-500',
   Facebook: 'from-blue-600 to-blue-700'
+};
+
+const PLATFORM_BADGE: Record<Platform, string> = {
+  YouTube: 'bg-red-600',
+  TikTok: 'bg-black',
+  Instagram: 'bg-gradient-to-tr from-fuchsia-600 to-pink-600',
+  Facebook: 'bg-blue-600'
 };
 
 function LessonThumbnail({ lesson, index, className }: { lesson: Lesson, index?: number, className?: string }) {
@@ -342,7 +350,7 @@ export default function App() {
       <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-background/80 backdrop-blur-md border-b border-on-surface/5 py-2' : 'bg-background py-4'}`}>
         <div className="max-w-7xl mx-auto px-5">
           {/* Mobile row 1: logo */}
-          <div className="flex items-center justify-between md:hidden">
+          <div className="flex items-center justify-center md:hidden">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollTo('home')}>
               <BookOpen className="text-secondary w-6 h-6" />
               <h1 className="text-base font-extrabold text-secondary tracking-tight leading-tight">The Fluid Classroom</h1>
@@ -449,27 +457,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* Stats Section - Moved and Updated */}
-        <section className="max-w-7xl mx-auto px-6 py-10">
-          <div className="bg-surface-container-low rounded-[3rem] p-12 md:p-16">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-              <div className="flex flex-col items-center md:border-r border-on-surface/10 px-8">
-                <span className="text-7xl font-black text-on-surface mb-2">12</span>
-                <span className="text-on-surface-variant font-semibold text-lg text-center">Lessons Watched Today</span>
-              </div>
 
-              <div className="flex flex-col items-center">
-                <span className="text-7xl font-black text-on-surface mb-2">4.9</span>
-                <div className="flex text-tertiary-container mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={24} fill="currentColor" />
-                  ))}
-                </div>
-                <span className="text-on-surface-variant font-semibold text-lg text-center">Average Course Rating</span>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* About Us Section - Updated Layout */}
         <section ref={aboutRef} className="max-w-7xl mx-auto px-6 py-20">
@@ -656,8 +644,25 @@ function PlatformLessonsView({ topic, lessons, hasQuizIds, onBack, initialLesson
   const [quizLesson, setQuizLesson] = useState<Lesson | null>(null);
   const [direction, setDirection] = useState<number>(0);
   const touchStartY = useRef<number>(0);
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
 
-  // Use the full lessons list, the profiling is handled in the Grid view
+  useEffect(() => {
+    const loadCompleted = () => {
+      const stored = localStorage.getItem('completed_quizzes');
+      if (stored) {
+        try { setCompletedIds(new Set(JSON.parse(stored))); }
+        catch (e) { console.error(e); }
+      }
+    };
+    loadCompleted();
+    window.addEventListener('storage', loadCompleted);
+    window.addEventListener('completed_quizzes_updated', loadCompleted);
+    return () => {
+      window.removeEventListener('storage', loadCompleted);
+      window.removeEventListener('completed_quizzes_updated', loadCompleted);
+    };
+  }, []);
+
   const sortedLessons = lessons;
 
   useEffect(() => {
@@ -668,6 +673,26 @@ function PlatformLessonsView({ topic, lessons, hasQuizIds, onBack, initialLesson
   }, [initialLessonId, sortedLessons]);
 
   const lesson = sortedLessons[currentIdx] ?? null;
+
+  const navigate = (idx: number) => {
+    if (idx >= 0 && idx < sortedLessons.length) {
+      setDirection(idx > currentIdx ? 1 : -1);
+      setCurrentIdx(idx);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaY = touchStartY.current - touchEndY;
+    if (Math.abs(deltaY) > 50) {
+      if (deltaY > 0) navigate(currentIdx + 1);
+      else navigate(currentIdx - 1);
+    }
+  };
 
   const getEmbedUrl = (url?: string): string | null => {
     if (!url) return null;
@@ -697,44 +722,10 @@ function PlatformLessonsView({ topic, lessons, hasQuizIds, onBack, initialLesson
     return url;
   };
 
-  const navigate = (newIdx: number) => {
-    if (newIdx < 0 || newIdx >= sortedLessons.length) return;
-    setDirection(newIdx > currentIdx ? 1 : -1);
-    setCurrentIdx(newIdx);
-  };
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') navigate(currentIdx + 1);
-      else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') navigate(currentIdx - 1);
-      else if (e.key === 'Escape') onBack();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [currentIdx, sortedLessons.length]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const diff = touchStartY.current - e.changedTouches[0].clientY;
-    if (Math.abs(diff) > 55) navigate(diff > 0 ? currentIdx + 1 : currentIdx - 1);
-  };
-
-  const PLATFORM_BADGE: Record<Platform, string> = {
-    YouTube: 'bg-red-600',
-    TikTok: 'bg-zinc-900 border border-white/20',
-    Instagram: 'bg-pink-600',
-    Facebook: 'bg-blue-600',
-  };
-
-  const isVertical =
-    lesson?.platform === 'TikTok' ||
-    lesson?.platform === 'Instagram' ||
-    lesson?.videoUrl?.includes('/shorts/');
-
   const embedUrl = getEmbedUrl(lesson?.videoUrl);
+  const isVertical = lesson?.platform === 'TikTok' ||
+                     lesson?.platform === 'Instagram' ||
+                     lesson?.videoUrl?.includes('/shorts/');
 
   const slideVariants = {
     enter: (dir: number) => ({ y: dir > 0 ? '100%' : '-100%', opacity: 0 }),
@@ -742,7 +733,6 @@ function PlatformLessonsView({ topic, lessons, hasQuizIds, onBack, initialLesson
     exit: (dir: number) => ({ y: dir > 0 ? '-40%' : '40%', opacity: 0 }),
   };
 
-  // Empty state
   if (sortedLessons.length === 0) {
     return (
       <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center text-white">
@@ -894,9 +884,11 @@ function PlatformLessonsView({ topic, lessons, hasQuizIds, onBack, initialLesson
               className="absolute right-4 bottom-16 flex flex-col items-center gap-6 z-30"
             >
               <FeedActionButton
-                icon={<GraduationCap size={26} />}
-                label="Quiz"
+                icon={completedIds.has(lesson.id) ? <CheckCircle size={26} /> : <GraduationCap size={26} />}
+                label={completedIds.has(lesson.id) ? "Passed" : "Quiz"}
+                success={completedIds.has(lesson.id)}
                 active={hasQuizIds.has(lesson.id)}
+                disabled={!hasQuizIds.has(lesson.id)}
                 onClick={() => setQuizLesson(lesson)}
               />
               <FeedActionButton
@@ -981,12 +973,14 @@ function FeedActionButton({
   icon,
   label,
   active = false,
+  success = false,
   disabled = false,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
   active?: boolean;
+  success?: boolean;
   disabled?: boolean;
   onClick?: () => void;
 }) {
@@ -998,9 +992,11 @@ function FeedActionButton({
       className={`flex flex-col items-center gap-1.5 ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
       <div
-        className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${active
-          ? 'bg-amber-400 text-amber-900 shadow-xl shadow-amber-400/40'
-          : 'bg-white/20 text-white hover:bg-white/30'
+        className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${success
+          ? 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/40'
+          : active
+            ? 'bg-amber-400 text-amber-900 shadow-xl shadow-amber-400/40'
+            : 'bg-white/20 text-white hover:bg-white/30'
           }`}
       >
         {icon}
