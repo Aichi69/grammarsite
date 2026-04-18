@@ -398,7 +398,7 @@ export default function App() {
                 <span className="text-secondary">Loop</span>
               </h2>
               <p className="text-xl text-on-surface-variant max-w-xl mb-10 leading-relaxed">
-                To deliver bite-sized, high-impact grammar hacks that help creators and professionals master the English language in minutes or less.
+                The Grammar Loop delivers short form quality grammar hacks designed for learners. We provide clear strategies and break formal English into small loops: Learn the rule. Try it. Use it.
               </p>
               <div className="flex flex-wrap gap-4">
                 <span className="bg-tertiary-container text-on-tertiary-container px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm">
@@ -471,11 +471,11 @@ export default function App() {
             <MissionCard
               icon={<Lightbulb className="text-secondary" size={24} />}
               title="Mission"
-              description="To deliver bite-sized, high-impact grammar insights that empower creators and professionals to write with clarity, confidence, and precision. We aim to simplify complex grammar rules, provide practical writing strategies, and make language learning accessible, engaging, and useful for everyday communication."
+              description="To deliver high-impact grammar insights that empower BSEd English students to write with clarity, confidence, and academic precision. We aim to simplify complex grammar rules, provide formal writing strategies, and make language acquisition accessible, engaging, and essential for future educators."
             />
             <MissionCard
               icon={<GraduationCap className="text-secondary" size={24} />}
-              title="Learning"
+              title="Vision"
               description="To become a trusted and go-to platform for modern grammar learning, where individuals continuously improve their writing skills through simple, effective, and engaging content."
             />
           </div>
