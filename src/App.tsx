@@ -490,35 +490,35 @@ export default function App() {
               name="Antiquera, Shane M. "
               role="BSED ENGLISH III
 Researcher"
-              bio="A PhD in Cognitive Linguistics with 15 years of experience bridging the gap between brain science and language acquisition."
+              bio="shaneantiquera4@gmail.com"
             />
             <TeamCard
               image="/catherine.jpg"
               name="Bayani, Catherine M. "
               role="BSED ENGLISH III
 Researcher"
-              bio="The architect behind 'The Fluid Classroom.' Marcus ensures every pixel serves the learner's journey and mental momentum."
+              bio="catherinebayani192@gmail.com"
             />
             <TeamCard
               image="/cyrel.jpg"
               name="Belgado, Cyrel Ann M."
               role="BSED ENGLISH III
 Researcher"
-              bio="Dedicated to human-centric design, Sarah ensures GrammarFlow remains the most approachable learning tool in the market."
+              bio="cyrelannm20@gmail.com"
             />
             <TeamCard
               image="/charlene.jpg"
               name="Campita, Charlene C."
               role="BSED ENGLISH III
 Researcher"
-              bio="A full-stack wizard who transformed traditional learning logic into the smooth, interactive GrammarLoop experience."
+              bio="charlenecampita@gmail.com"
             />
             <TeamCard
               image="/dawn.jpg"
               name="Sidro, Dawn Yve A."
               role="BSED ENGLISH III
 Researcher"
-              bio="Scaling our mission to reach every corner of the globe, David ensures Quintessenen remains at the forefront of EdTech."
+              bio="dawnyvesidro@gmail.com"
             />
           </div>
         </section>
