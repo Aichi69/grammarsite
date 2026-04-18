@@ -398,7 +398,7 @@ export default function App() {
                 <span className="text-secondary">Loop</span>
               </h2>
               <p className="text-xl text-on-surface-variant max-w-xl mb-10 leading-relaxed">
-                The Grammar Loop delivers short form quality grammar hacks designed for learners. We provide clear strategies and break formal English into small loops: Learn the rule. Try it. Use it.
+                This platform offers bite-sized or short videos about parts of speech, verb and tenses, sentence structure and syntax, mechanics and punctuation,advance grammatical concepts, common usage pitfalls and pronunciation ensuring the overall improvement of students' grammar competence and skills in writing.
               </p>
               <div className="flex flex-wrap gap-4">
                 <span className="bg-tertiary-container text-on-tertiary-container px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm">
@@ -421,11 +421,11 @@ export default function App() {
               viewport={{ once: true }}
               className="lg:col-span-5 relative"
             >
-              <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl relative z-10">
+              <div className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl relative z-10 bg-white flex items-center justify-center p-8">
                 <img
-                  className="w-full h-full object-cover"
-                  src="https://picsum.photos/seed/learning/800/800"
-                  alt="Learning environment"
+                  className="w-full h-full object-contain"
+                  src="/grammar.jpg"
+                  alt="Grammar word cloud"
                   referrerPolicy="no-referrer"
                 />
               </div>
@@ -568,7 +568,7 @@ Researcher"
           </div>
 
           <div className="pt-8 border-t border-on-surface/5 text-center text-on-surface-variant text-sm">
-            <p>© {new Date().getFullYear()} Quintessenen Grammar . All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Quintessen Grammar . All rights reserved.</p>
           </div>
         </div>
       </footer>
