@@ -398,7 +398,7 @@ export default function App() {
                 <span className="text-secondary">Loop</span>
               </h2>
               <p className="text-xl text-on-surface-variant max-w-xl mb-10 leading-relaxed">
-                To deliver bite-sized, high-impact grammar hacks that help creators and professionals master the English language in 60 seconds or less.
+                To deliver bite-sized, high-impact grammar hacks that help creators and professionals master the English language in minutes or less.
               </p>
               <div className="flex flex-wrap gap-4">
                 <span className="bg-tertiary-container text-on-tertiary-container px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm">
@@ -486,35 +486,35 @@ export default function App() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
             <TeamCard
-              image="https://picsum.photos/seed/elena/600/800"
+              image="/shane.jpg"
               name="Antiquera, Shane M. "
               role="BSED ENGLISH III
 Researcher"
               bio="A PhD in Cognitive Linguistics with 15 years of experience bridging the gap between brain science and language acquisition."
             />
             <TeamCard
-              image="https://picsum.photos/seed/marcus/600/800"
+              image="/catherine.jpg"
               name="Bayani, Catherine M. "
               role="BSED ENGLISH III
 Researcher"
               bio="The architect behind 'The Fluid Classroom.' Marcus ensures every pixel serves the learner's journey and mental momentum."
             />
             <TeamCard
-              image="https://picsum.photos/seed/sarah/600/800"
+              image="/cyrel.jpg"
               name="Belgado, Cyrel Ann M."
               role="BSED ENGLISH III
 Researcher"
               bio="Dedicated to human-centric design, Sarah ensures GrammarFlow remains the most approachable learning tool in the market."
             />
             <TeamCard
-              image="https://picsum.photos/seed/anya/600/800"
+              image="/charlene.jpg"
               name="Campita, Charlene C."
               role="BSED ENGLISH III
 Researcher"
               bio="A full-stack wizard who transformed traditional learning logic into the smooth, interactive GrammarLoop experience."
             />
             <TeamCard
-              image="https://picsum.photos/seed/david/600/800"
+              image="/dawn.jpg"
               name="Sidro, Dawn Yve A."
               role="BSED ENGLISH III
 Researcher"
@@ -709,10 +709,13 @@ function PlatformLessonsView({ topic, lessons, hasQuizIds, onBack, initialLesson
       return `${cleanUrl.endsWith('/') ? cleanUrl : cleanUrl + '/'}embed`;
     }
     if (url.includes('tiktok.com')) {
-      const videoIdMatch = url.match(/\/video\/(\d+)/);
+      // Handles: tiktok.com/@user/video/123, tiktok.com/v/123, etc.
+      const videoIdMatch = url.match(/\/video\/(\d+)/) || url.match(/\/v\/(\d+)/);
       if (videoIdMatch && videoIdMatch[1]) {
         return `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}`;
       }
+      // If it's a mobile link (vt.tiktok.com), we can't easily resolve it on the frontend.
+      // We return the URL and it might fail, but we've improved the detection for full links.
       return url;
     }
     return url;
