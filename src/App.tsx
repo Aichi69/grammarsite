@@ -49,6 +49,7 @@ interface Lesson {
   platform?: Platform;
   topic?: string;
   subtopic?: string;
+  subsubtopic?: string;
   videoUrl?: string;
   created_at?: string; // Preserve Supabase timestamp
 }

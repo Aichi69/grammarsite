@@ -26,6 +26,7 @@ interface Lesson {
     platform?: Platform;
     topic?: string;
     subtopic?: string;
+    subsubtopic?: string;
     videoUrl?: string;
     created_at?: string;
 }
@@ -201,6 +202,7 @@ export function CreatorDashboard({
         platform: 'YouTube',
         topic: 'Parts of Speech',
         subtopic: '',
+        subsubtopic: '',
         thumbnail: '',
         videoUrl: '',
     });
@@ -235,6 +237,9 @@ export function CreatorDashboard({
         const formattedSubtopic = (formData.subtopic || 'General')
             .trim()
             .replace(/\b\w/g, c => c.toUpperCase());
+        const formattedSubsubtopic = formData.subsubtopic
+            ? formData.subsubtopic.trim().replace(/\b\w/g, c => c.toUpperCase())
+            : undefined;
 
         const newLesson: Lesson = {
             ...existingLesson,
@@ -244,6 +249,7 @@ export function CreatorDashboard({
             platform: (formData.platform as Platform) || 'YouTube',
             topic: formData.topic || 'Parts of Speech',
             subtopic: formattedSubtopic,
+            subsubtopic: formattedSubsubtopic,
             thumbnail: formData.thumbnail || autoThumb || `https://picsum.photos/seed/${Date.now()}/1200/600`,
             videoUrl: formData.videoUrl || '',
             tag: (existingLesson as any)?.tag || 'NEW',
@@ -258,7 +264,7 @@ export function CreatorDashboard({
     };
 
     const resetForm = () => {
-        setFormData({ title: '', description: '', platform: 'YouTube', topic: 'Parts of Speech', subtopic: '', thumbnail: '', videoUrl: '' });
+        setFormData({ title: '', description: '', platform: 'YouTube', topic: 'Parts of Speech', subtopic: '', subsubtopic: '', thumbnail: '', videoUrl: '' });
         setIsAdding(false);
         setEditingId(null);
     };
@@ -363,6 +369,7 @@ export function CreatorDashboard({
                                                     <div className="flex flex-col">
                                                         <span className="text-xs font-bold text-secondary uppercase tracking-widest leading-tight">{lesson.topic}</span>
                                                         {lesson.subtopic && <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{lesson.subtopic}</span>}
+                                                        {lesson.subsubtopic && <span className="text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-widest">{lesson.subsubtopic}</span>}
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <button
@@ -472,6 +479,23 @@ export function CreatorDashboard({
                                         />
                                         <datalist id="subtopic-suggestions">
                                             {Array.from(new Set(lessons.filter(l => l.topic === formData.topic && l.subtopic).map(l => l.subtopic as string))).sort().map(st => (
+                                                <option key={st} value={st} />
+                                            ))}
+                                        </datalist>
+                                    </div>
+
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-bold text-on-surface mb-2">Sub-subtopic <span className="text-on-surface-variant/60 font-normal">(optional)</span></label>
+                                        <input
+                                            type="text"
+                                            list="subsubtopic-suggestions"
+                                            value={formData.subsubtopic || ''}
+                                            onChange={(e) => setFormData({ ...formData, subsubtopic: e.target.value })}
+                                            className="w-full bg-surface-container-low border-none rounded-2xl py-4 px-6 text-on-surface focus:ring-2 focus:ring-secondary/20 transition-all"
+                                            placeholder="e.g. Types of Verb"
+                                        />
+                                        <datalist id="subsubtopic-suggestions">
+                                            {Array.from(new Set(lessons.filter(l => l.topic === formData.topic && l.subtopic === formData.subtopic && l.subsubtopic).map(l => l.subsubtopic as string))).sort().map(st => (
                                                 <option key={st} value={st} />
                                             ))}
                                         </datalist>

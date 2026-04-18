@@ -106,6 +106,108 @@ function MiniThumb({ lesson, index }: { lesson: Lesson; index: number }) {
 }
 
 // ── Collapsible SubTopic section ──────────────────────────────────────────
+
+interface LessonRowProps {
+    lesson: Lesson;
+    idx: number;
+    onVideoClick: (id: string) => void;
+    activeTab: 'lessons' | 'quizzes';
+    hasQuizIds: Set<string>;
+    completedIds: Set<string>;
+    onStartQuiz: (lesson: Lesson) => void;
+}
+
+const LessonRow: React.FC<LessonRowProps> = ({ lesson, idx, onVideoClick, activeTab, hasQuizIds, completedIds, onStartQuiz }) => (
+    <motion.div
+        key={lesson.id}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: idx * 0.03 }}
+        onClick={() => onVideoClick(lesson.id)}
+        className="group flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-secondary/4 transition-colors"
+    >
+        {/* Index */}
+        <span className="w-5 text-xs font-bold text-on-surface-variant/50 shrink-0 text-center group-hover:hidden">
+            {idx + 1}
+        </span>
+        <span className="hidden group-hover:flex w-5 items-center justify-center shrink-0">
+            <ChevronRight size={15} className="text-secondary" />
+        </span>
+
+        {/* Thumbnail */}
+        <div className="w-24 aspect-video rounded-lg overflow-hidden bg-black shrink-0 relative shadow-sm">
+            <MiniThumb lesson={lesson} index={idx} />
+            <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <PlayCircle size={20} className="text-white" fill="white" />
+            </div>
+            {hasQuizIds.has(lesson.id) && (
+                <div className="absolute top-1 right-1 bg-secondary text-white text-[7px] font-black px-1 py-0.5 rounded uppercase flex items-center gap-0.5">
+                    <Zap size={7} fill="currentColor" /> Quiz
+                </div>
+            )}
+            {lesson.duration && (
+                <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[8px] px-1 rounded font-bold">
+                    {lesson.duration}
+                </div>
+            )}
+        </div>
+
+        {/* Text */}
+        <div className="flex-grow min-w-0">
+            <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-on-surface group-hover:text-secondary transition-colors line-clamp-1 leading-snug">
+                    {lesson.title}
+                </p>
+                {completedIds.has(lesson.id) && (
+                    <CheckCircle size={14} className="text-green-500 shrink-0" />
+                )}
+            </div>
+            <p className="text-xs text-on-surface-variant opacity-60 mt-0.5 line-clamp-1">
+                {lesson.description}
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+                {lesson.platform && (
+                    <span className="px-1.5 py-0.5 bg-black/5 rounded text-[8px] font-black uppercase text-on-surface-variant/70">
+                        {lesson.platform}
+                    </span>
+                )}
+                {lesson.created_at && (
+                    <span className="text-[10px] text-on-surface-variant/50 flex items-center gap-1">
+                        <Clock size={9} />
+                        {new Date(lesson.created_at).toLocaleDateString()}
+                    </span>
+                )}
+            </div>
+        </div>
+
+        {/* Quiz tab action */}
+        {activeTab === 'quizzes' ? (
+            completedIds.has(lesson.id) ? (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onStartQuiz(lesson); }}
+                    className="shrink-0 bg-emerald-500 text-white text-xs font-black px-3 py-1.5 rounded-xl hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1"
+                >
+                    <CheckCircle size={11} />
+                    Completed
+                </button>
+            ) : (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onStartQuiz(lesson); }}
+                    className="shrink-0 bg-secondary text-white text-xs font-black px-3 py-1.5 rounded-xl hover:bg-secondary-dim transition-all shadow-md shadow-secondary/20 flex items-center gap-1"
+                >
+                    <Zap size={11} />
+                    Start
+                </button>
+            )
+        ) : (
+            <ChevronRight
+                size={16}
+                className="text-on-surface-variant/25 group-hover:text-secondary group-hover:translate-x-0.5 transition-all shrink-0"
+            />
+        )}
+    </motion.div>
+);
+
 interface SubTopicSectionProps {
     subtopic: string;
     lessons: Lesson[];
@@ -117,141 +219,82 @@ interface SubTopicSectionProps {
     completedIds: Set<string>;
 }
 
+const SubSubTopicSection: React.FC<{ subsubtopic: string; lessons: Lesson[]; } & Omit<SubTopicSectionProps, 'subtopic' | 'defaultOpen'>> = ({
+    subsubtopic, lessons, hasQuizIds, onVideoClick, activeTab, onStartQuiz, completedIds
+}) => {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="bg-on-surface/2">
+            <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-3 hover:bg-on-surface/5 transition-colors border-b border-on-surface/5">
+                <div className="flex items-center gap-2">
+                    <ChevronRight size={14} className={`text-on-surface-variant transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
+                    <span className="text-sm font-bold text-on-surface-variant capitalize">{subsubtopic}</span>
+                </div>
+                <span className="text-[10px] font-bold text-on-surface-variant/70 bg-on-surface/5 px-2 py-0.5 rounded-md">
+                    {lessons.length} {lessons.length === 1 ? 'video' : 'videos'}
+                </span>
+            </button>
+            <AnimatePresence>
+                {open && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                        <div className="divide-y divide-on-surface/5 border-b border-on-surface/5 bg-white/50">
+                            {lessons.map((lesson, idx) => (
+                                <LessonRow key={lesson.id} lesson={lesson} idx={idx} onVideoClick={onVideoClick} activeTab={activeTab} hasQuizIds={hasQuizIds} completedIds={completedIds} onStartQuiz={onStartQuiz} />
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 const SubTopicSection: React.FC<SubTopicSectionProps> = ({
-    subtopic,
-    lessons,
-    hasQuizIds,
-    onVideoClick,
-    activeTab,
-    onStartQuiz,
-    defaultOpen,
-    completedIds,
+    subtopic, lessons, hasQuizIds, onVideoClick, activeTab, onStartQuiz, defaultOpen, completedIds
 }) => {
     const [open, setOpen] = useState(defaultOpen);
 
+    const { groups, ungrouped } = React.useMemo(() => {
+        const _groups: Record<string, Lesson[]> = {};
+        const _ungrouped: Lesson[] = [];
+        lessons.forEach(l => {
+            if (l.subsubtopic) {
+                if (!_groups[l.subsubtopic]) _groups[l.subsubtopic] = [];
+                _groups[l.subsubtopic].push(l);
+            } else {
+                _ungrouped.push(l);
+            }
+        });
+        return { groups: _groups, ungrouped: _ungrouped };
+    }, [lessons]);
+
     return (
         <div className="mb-2 rounded-2xl overflow-hidden border border-on-surface/6 bg-white">
-            {/* Category header */}
-            <button
-                onClick={() => setOpen((o) => !o)}
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-on-surface/4 transition-colors"
-            >
+            <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-on-surface/4 transition-colors">
                 <div className="flex items-center gap-3">
                     <span className="text-base font-black text-on-surface capitalize">{subtopic}</span>
                     <span className="text-xs font-bold text-on-surface-variant bg-on-surface/6 px-2 py-0.5 rounded-full">
                         {lessons.length} {lessons.length === 1 ? 'video' : 'videos'}
                     </span>
                 </div>
-                <motion.div
-                    animate={{ rotate: open ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                >
+                <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
                     <ChevronDown size={18} className="text-on-surface-variant" />
                 </motion.div>
             </button>
-
-            {/* Lesson rows */}
             <AnimatePresence initial={false}>
                 {open && (
-                    <motion.div
-                        key="content"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.22, ease: 'easeInOut' }}
-                        className="overflow-hidden"
-                    >
-                        <div className="border-t border-on-surface/6 divide-y divide-on-surface/5">
-                            {lessons.map((lesson, idx) => (
-                                <motion.div
-                                    key={lesson.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: idx * 0.03 }}
-                                    onClick={() => onVideoClick(lesson.id)}
-                                    className="group flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-secondary/4 transition-colors"
-                                >
-                                    {/* Index */}
-                                    <span className="w-5 text-xs font-bold text-on-surface-variant/50 shrink-0 text-center group-hover:hidden">
-                                        {idx + 1}
-                                    </span>
-                                    <span className="hidden group-hover:flex w-5 items-center justify-center shrink-0">
-                                        <ChevronRight size={15} className="text-secondary" />
-                                    </span>
-
-                                    {/* Thumbnail */}
-                                    <div className="w-24 aspect-video rounded-lg overflow-hidden bg-black shrink-0 relative shadow-sm">
-                                        <MiniThumb lesson={lesson} index={idx} />
-                                        <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <PlayCircle size={20} className="text-white" fill="white" />
-                                        </div>
-                                        {hasQuizIds.has(lesson.id) && (
-                                            <div className="absolute top-1 right-1 bg-secondary text-white text-[7px] font-black px-1 py-0.5 rounded uppercase flex items-center gap-0.5">
-                                                <Zap size={7} fill="currentColor" /> Quiz
-                                            </div>
-                                        )}
-                                        {lesson.duration && (
-                                            <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[8px] px-1 rounded font-bold">
-                                                {lesson.duration}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Text */}
-                                    <div className="flex-grow min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-semibold text-on-surface group-hover:text-secondary transition-colors line-clamp-1 leading-snug">
-                                                {lesson.title}
-                                            </p>
-                                            {completedIds.has(lesson.id) && (
-                                                <CheckCircle size={14} className="text-green-500 shrink-0" />
-                                            )}
-                                        </div>
-                                        <p className="text-xs text-on-surface-variant opacity-60 mt-0.5 line-clamp-1">
-                                            {lesson.description}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            {lesson.platform && (
-                                                <span className="px-1.5 py-0.5 bg-black/5 rounded text-[8px] font-black uppercase text-on-surface-variant/70">
-                                                    {lesson.platform}
-                                                </span>
-                                            )}
-                                            {lesson.created_at && (
-                                                <span className="text-[10px] text-on-surface-variant/50 flex items-center gap-1">
-                                                    <Clock size={9} />
-                                                    {new Date(lesson.created_at).toLocaleDateString()}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Quiz tab action */}
-                                    {activeTab === 'quizzes' ? (
-                                        completedIds.has(lesson.id) ? (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); onStartQuiz(lesson); }}
-                                                className="shrink-0 bg-emerald-500 text-white text-xs font-black px-3 py-1.5 rounded-xl hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1"
-                                            >
-                                                <CheckCircle size={11} />
-                                                Completed
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); onStartQuiz(lesson); }}
-                                                className="shrink-0 bg-secondary text-white text-xs font-black px-3 py-1.5 rounded-xl hover:bg-secondary-dim transition-all shadow-md shadow-secondary/20 flex items-center gap-1"
-                                            >
-                                                <Zap size={11} />
-                                                Start
-                                            </button>
-                                        )
-                                    ) : (
-                                        <ChevronRight
-                                            size={16}
-                                            className="text-on-surface-variant/25 group-hover:text-secondary group-hover:translate-x-0.5 transition-all shrink-0"
-                                        />
-                                    )}
-                                </motion.div>
+                    <motion.div key="content" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: 'easeInOut' }} className="overflow-hidden">
+                        <div className="border-t border-on-surface/6">
+                            {/* Grouped Sub-subtopics */}
+                            {Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).map(([sst, sstLessons]) => (
+                                <SubSubTopicSection key={sst} subsubtopic={sst} lessons={sstLessons} hasQuizIds={hasQuizIds} onVideoClick={onVideoClick} activeTab={activeTab} completedIds={completedIds} onStartQuiz={onStartQuiz} />
                             ))}
+                            {/* Ungrouped lessons */}
+                            <div className="divide-y divide-on-surface/5">
+                                {ungrouped.map((lesson, idx) => (
+                                    <LessonRow key={lesson.id} lesson={lesson} idx={idx} onVideoClick={onVideoClick} activeTab={activeTab} hasQuizIds={hasQuizIds} completedIds={completedIds} onStartQuiz={onStartQuiz} />
+                                ))}
+                            </div>
                         </div>
                     </motion.div>
                 )}
