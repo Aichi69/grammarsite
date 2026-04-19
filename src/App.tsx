@@ -55,13 +55,13 @@ interface Lesson {
 }
 
 const TOPICS = [
-  { id: 'Parts of Speech', title: 'Parts of Speech', icon: <BookOpen className="text-indigo-500" size={24} />, desc: 'Nouns, Verbs, Adjectives, Adverbs, and more...', bg: 'bg-indigo-50' },
-  { id: 'Verb Tenses & Aspects', title: 'Verb Tenses & Aspects', icon: <Clock className="text-emerald-500" size={24} />, desc: 'Present, Past, Future, Perfect, and Continuous...', bg: 'bg-emerald-50' },
-  { id: 'Sentence Structure & Syntax', title: 'Sentence Structure & Syntax', icon: <Layout className="text-amber-500" size={24} />, desc: 'Clauses, Phrases, Conjunctions, and Sentence Logic...', bg: 'bg-amber-50' },
-  { id: 'Mechanics & Punctuation', title: 'Mechanics & Punctuation', icon: <PenTool className="text-rose-500" size={24} />, desc: 'Commas, Semicolons, Quotes, and Formatting...', bg: 'bg-rose-50' },
-  { id: 'Advanced Grammatical Concepts', title: 'Advanced Grammatical Concepts', icon: <Zap className="text-purple-500" size={24} />, desc: 'Conditionals, Modals, Passive Voice, and Nuances...', bg: 'bg-purple-50' },
-  { id: 'Common Usage Pitfalls', title: 'Common Usage Pitfalls', icon: <AlertCircle className="text-orange-500" size={24} />, desc: 'Common Mistakes, Easily Confused Words...', bg: 'bg-orange-50' },
-  { id: 'Pronunciation', title: 'Pronunciation', icon: <Mic className="text-cyan-500" size={24} />, desc: 'Sounds, Stress, Intonation, and Rhythm...', bg: 'bg-cyan-50' },
+  { id: 'Parts of Speech', title: 'Parts of Speech', icon: <BookOpen size={24} />, bg: 'bg-[#E9D5FF]', accent: 'text-indigo-700' }, // Lavender
+  { id: 'Verb Tenses & Aspects', title: 'Verb Tenses & Aspects', icon: <Clock size={24} />, bg: 'bg-[#DCFCE7]', accent: 'text-emerald-700' }, // Sage
+  { id: 'Sentence Structure & Syntax', title: 'Sentence Structure & Syntax', icon: <Layout size={24} />, bg: 'bg-[#FEF3C7]', accent: 'text-amber-800' }, // Cream
+  { id: 'Mechanics & Punctuation', title: 'Mechanics & Punctuation', icon: <PenTool size={24} />, bg: 'bg-[#FFE4E6]', accent: 'text-rose-700' }, // Pink
+  { id: 'Advanced Grammatical Concepts', title: 'Advanced Grammatical Concepts', icon: <Zap size={24} />, bg: 'bg-[#F3E8FF]', accent: 'text-purple-700' }, // Purple
+  { id: 'Common Usage Pitfalls', title: 'Common Usage Pitfalls', icon: <AlertCircle size={24} />, bg: 'bg-[#FFEDD5]', accent: 'text-orange-800' }, // Peach
+  { id: 'Pronunciation', title: 'Pronunciation', icon: <Mic size={24} />, bg: 'bg-[#E0F2FE]', accent: 'text-cyan-800' }, // Sky
 ];
 
 const PLATFORM_LESSONS: Record<Platform, Lesson[]> = {
@@ -247,19 +247,19 @@ export default function App() {
     return localLessons.filter(l => l.topic === topicTitle);
   };
 
-  function TopicCard({ icon, iconBg, title, description, lessons, onClick }: any) {
+  function TopicCard({ icon, iconBg, accent, title, description, lessons, onClick }: any) {
     return (
       <div
         onClick={onClick}
-        className="bg-white rounded-3xl p-8 hover:shadow-2xl transition-all cursor-pointer border border-on-surface/5 group hover:border-secondary/20 h-full flex flex-col"
+        className={`${iconBg} rounded-[2.5rem] p-8 shadow-2xl shadow-on-surface/15 -translate-y-1 hover:-translate-y-4 hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] transition-all duration-500 cursor-pointer border border-white/40 group hover:border-secondary/20 h-full flex flex-col`}
       >
-        <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-          {icon}
+        <div className="w-12 h-12 rounded-2xl bg-white/40 backdrop-blur-md flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm border border-white/30">
+          <div className={accent}>{icon}</div>
         </div>
-        <h4 className="text-xl font-bold text-on-surface mb-3 group-hover:text-secondary transition-colors line-clamp-2">{title}</h4>
-        <p className="text-sm text-on-surface-variant leading-relaxed mb-6 flex-grow">{description}</p>
+        <h4 className="text-xl font-black text-on-surface mb-3 group-hover:text-secondary transition-colors line-clamp-2">{title}</h4>
+        <p className="text-sm text-on-surface-variant/80 font-medium leading-relaxed mb-6 flex-grow">{description}</p>
         <div className="pt-6 border-t border-on-surface/5 mt-auto">
-          <span className="text-xs font-bold text-secondary">{lessons}</span>
+          <span className="text-[10px] font-black tracking-[0.15em] uppercase text-on-surface-variant/80">{lessons}</span>
         </div>
       </div>
     );
@@ -354,7 +354,7 @@ export default function App() {
           <div className="flex items-center justify-center md:hidden">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollTo('home')}>
               <BookOpen className="text-secondary w-6 h-6" />
-              <h1 className="text-base font-extrabold text-secondary tracking-tight leading-tight">Quintessen Grammar</h1>
+              <h1 className="text-base font-extrabold text-secondary tracking-tight leading-tight">Quintessential Grammar</h1>
             </div>
           </div>
 
@@ -371,7 +371,7 @@ export default function App() {
           <div className="hidden md:flex items-center justify-between">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => scrollTo('home')}>
               <BookOpen className="text-secondary w-8 h-8" />
-              <h1 className="text-2xl font-extrabold text-secondary tracking-tight leading-tight">Quintessen Grammar</h1>
+              <h1 className="text-2xl font-extrabold text-secondary tracking-tight leading-tight">Quintessential Grammar</h1>
             </div>
 
             <nav className="flex items-center gap-4">
@@ -421,7 +421,7 @@ export default function App() {
               viewport={{ once: true }}
               className="lg:col-span-5 relative"
             >
-              <div className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl relative z-10 bg-white flex items-center justify-center p-8">
+              <div className="aspect-video rounded-[3rem] overflow-hidden shadow-2xl relative z-10 bg-white flex items-center justify-center p-1">
                 <img
                   className="w-full h-full object-contain"
                   src="/grammar.jpg"
@@ -429,8 +429,8 @@ export default function App() {
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-tertiary-container rounded-3xl -z-0 opacity-50 blur-2xl"></div>
-              <div className="absolute -top-6 -left-6 w-32 h-32 bg-secondary-container rounded-full -z-0 opacity-30 blur-xl"></div>
+              <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-sky-400/20 rounded-full -z-0 blur-3xl"></div>
+              <div className="absolute -top-10 -left-10 w-48 h-48 bg-secondary/10 rounded-full -z-0 blur-2xl"></div>
             </motion.div>
           </div>
         </section>
@@ -449,6 +449,7 @@ export default function App() {
                 key={t.id}
                 icon={t.icon}
                 iconBg={t.bg}
+                accent={t.accent}
                 title={t.title}
                 description={t.desc}
                 lessons={`${getMergedLessons(t.id).length} Lessons`}
@@ -531,10 +532,10 @@ Researcher"
             <div className="md:col-span-5">
               <div className="flex items-center gap-3 mb-6">
                 <BookOpen className="text-secondary w-8 h-8" />
-                <h4 className="text-2xl font-extrabold text-secondary tracking-tight">Quintessen Grammar</h4>
+                <h4 className="text-2xl font-extrabold text-secondary tracking-tight">Quintessential Grammar</h4>
               </div>
               <p className="text-on-surface-variant text-lg leading-relaxed max-w-md">
-                To deliver bite-sized, high-impact grammar hacks that help creators and professionals master the English language in 60 seconds or less.
+                To deliver high-impact grammar hacks that empower BSEd English students to master the complexities of the English language with academic precision in just a few minutes.
               </p>
             </div>
 
@@ -568,7 +569,7 @@ Researcher"
           </div>
 
           <div className="pt-8 border-t border-on-surface/5 text-center text-on-surface-variant text-sm">
-            <p>© {new Date().getFullYear()} Quintessen Grammar . All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Quintessensial Grammar . All rights reserved.</p>
           </div>
         </div>
       </footer>
@@ -1037,10 +1038,9 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
 
 function PlatformCard({ icon, iconBg, title, description, lessons, onClick }: { icon: ReactNode, iconBg: string, title: string, description: string, lessons: string, onClick?: () => void }) {
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
+    <div
       onClick={onClick}
-      className="bg-white rounded-3xl p-8 shadow-xl shadow-on-surface/5 border border-on-surface/5 flex flex-col h-full group cursor-pointer"
+      className="bg-white rounded-3xl p-8 shadow-xl shadow-on-surface/5 border border-on-surface/5 flex flex-col h-full group cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
     >
       <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-6 ${iconBg}`}>
         {icon}
@@ -1052,13 +1052,13 @@ function PlatformCard({ icon, iconBg, title, description, lessons, onClick }: { 
       <div className="pt-6 border-t border-on-surface/5">
         <span className="text-secondary font-bold text-sm">{lessons}</span>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 function MissionCard({ icon, title, description, className }: { icon: ReactNode, title: string, description: string, className?: string }) {
   return (
-    <div className={`bg-white rounded-3xl p-8 shadow-xl shadow-on-surface/5 border border-on-surface/5 ${className}`}>
+    <div className={`bg-[#D9EAFD] rounded-3xl p-8 shadow-xl shadow-on-surface/5 border border-on-surface/5 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${className}`}>
       <div className="mb-6">
         {icon}
       </div>
@@ -1072,12 +1072,12 @@ function MissionCard({ icon, title, description, className }: { icon: ReactNode,
 
 function TeamCard({ image, name, role, bio }: { image: string, name: string, role: string, bio: string }) {
   return (
-    <div className="flex flex-col">
-      <div className="aspect-[3/4] rounded-3xl overflow-hidden mb-6 shadow-2xl">
-        <img src={image} alt={name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
+    <div className="flex flex-col transition-all duration-300 hover:-translate-y-2 group cursor-pointer">
+      <div className="aspect-[3/4] rounded-3xl overflow-hidden mb-6 shadow-2xl group-hover:shadow-secondary/10 transition-all">
+        <img src={image} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
       </div>
-      <h4 className="text-lg font-bold text-on-surface mb-1">{name}</h4>
-      <span className="text-secondary font-bold text-xs tracking-widest mb-4">{role}</span>
+      <h4 className="text-lg font-bold text-on-surface mb-1 group-hover:text-secondary transition-colors">{name}</h4>
+      <span className="text-secondary font-bold text-xs tracking-widest mb-4 uppercase">{role}</span>
       <p className="text-on-surface-variant text-sm leading-relaxed">
         {bio}
       </p>

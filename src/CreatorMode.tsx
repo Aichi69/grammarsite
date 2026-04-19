@@ -347,7 +347,7 @@ export function CreatorDashboard({
                                             initial={{ opacity: 0, scale: 0.9 }}
                                             animate={{ opacity: 1, scale: 1 }}
                                             exit={{ opacity: 0, scale: 0.9 }}
-                                            className="bg-white rounded-3xl overflow-hidden shadow-xl border border-on-surface/5 group"
+                                            className="bg-white rounded-3xl overflow-hidden shadow-xl border border-on-surface/5 group transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
                                         >
                                             <div className="aspect-video relative overflow-hidden">
                                                 <LessonThumb lesson={lesson} index={lessons.length - idx - 1} className="w-full h-full object-cover" />
