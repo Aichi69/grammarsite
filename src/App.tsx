@@ -352,8 +352,8 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-5">
           {/* Mobile row 1: logo */}
           <div className="flex items-center justify-center md:hidden">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollTo('home')}>
-              <BookOpen className="text-secondary w-6 h-6" />
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => scrollTo('home')}>
+              <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain scale-[2.2] group-hover:scale-[2.4] transition-transform duration-300 pointer-events-none" referrerPolicy="no-referrer" />
               <h1 className="text-base font-extrabold text-secondary tracking-tight leading-tight">Quintessential Grammar</h1>
             </div>
           </div>
@@ -369,8 +369,8 @@ export default function App() {
 
           {/* Desktop: single row */}
           <div className="hidden md:flex items-center justify-between">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => scrollTo('home')}>
-              <BookOpen className="text-secondary w-8 h-8" />
+            <div className="flex items-center gap-6 cursor-pointer group" onClick={() => scrollTo('home')}>
+              <img src="/logo.png" alt="Logo" className="w-14 h-14 object-contain scale-[2.6] group-hover:scale-[2.8] transition-transform duration-300 pointer-events-none" referrerPolicy="no-referrer" />
               <h1 className="text-2xl font-extrabold text-secondary tracking-tight leading-tight">Quintessential Grammar</h1>
             </div>
 
@@ -530,8 +530,8 @@ Researcher"
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-20">
             <div className="md:col-span-5">
-              <div className="flex items-center gap-3 mb-6">
-                <BookOpen className="text-secondary w-8 h-8" />
+              <div className="flex items-center gap-3 mb-6 group cursor-pointer">
+                <img src="/logo.png" alt="Logo" className="w-48 h-48 object-contain group-hover:scale-105 transition-transform duration-300" referrerPolicy="no-referrer" />
                 <h4 className="text-2xl font-extrabold text-secondary tracking-tight">Quintessential Grammar</h4>
               </div>
               <p className="text-on-surface-variant text-lg leading-relaxed max-w-md">
@@ -569,7 +569,7 @@ Researcher"
           </div>
 
           <div className="pt-8 border-t border-on-surface/5 text-center text-on-surface-variant text-sm">
-            <p>© {new Date().getFullYear()} Quintessensial Grammar . All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Quintessential Grammar . All rights reserved.</p>
           </div>
         </div>
       </footer>
